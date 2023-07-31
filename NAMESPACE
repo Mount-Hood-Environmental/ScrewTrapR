@@ -2,8 +2,8 @@
 
 export(Format_Chinook)
 export(Format_Steelhead)
-export(MYTSBE_Cohort)
 export(Multi_Year_Calendar)
+export(Multi_Year_Cohort)
 export(Multi_Year_Cohort_Fry)
 import(coda)
 import(ggmcmc)
