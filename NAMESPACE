@@ -2,9 +2,9 @@
 
 export(Format_Chinook)
 export(Format_Steelhead)
-export(MYTSBE_Calendar)
 export(MYTSBE_Cohort)
-export(MYTSBE_Cohort_Fry)
+export(Multi_Year_Calendar)
+export(Multi_Year_Cohort_Fry)
 import(coda)
 import(ggmcmc)
 import(lattice)

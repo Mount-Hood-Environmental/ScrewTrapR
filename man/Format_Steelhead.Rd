@@ -4,8 +4,15 @@
 \alias{Format_Steelhead}
 \title{Format Steelhead trout JTRAP data needed for MYTSBE models}
 \usage{
-Format_Steelhead(JTRAP_data, PTAG_data, strata = 7, smolt.date = "06-01",
-  flength.cut = 80, species, trap.name)
+Format_Steelhead(
+  JTRAP_data,
+  PTAG_data,
+  strata = 7,
+  smolt.date = "06-01",
+  flength.cut = 80,
+  species,
+  trap.name
+)
 }
 \arguments{
 \item{JTRAP_data}{JTRAP data query}
@@ -38,4 +45,3 @@ or left the population. "n" is the estimated number of fish available for recapt
 
 This package exports a .csv file to the working directory titled "Trap name, species, today's date, formatted data.csv"
 }
-

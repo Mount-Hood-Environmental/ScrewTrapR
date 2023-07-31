@@ -4,8 +4,14 @@
 \alias{Format_Chinook}
 \title{Format Chinook Salmon JTRAP data needed for MYTSBE models}
 \usage{
-Format_Chinook(JTRAP_data, PTAG_data, strata = 7, smolt.date = "07-01",
-  species, trap.name)
+Format_Chinook(
+  JTRAP_data,
+  PTAG_data,
+  strata = 7,
+  smolt.date = "07-01",
+  species,
+  trap.name
+)
 }
 \arguments{
 \item{JTRAP_data}{JTRAP data query}
@@ -36,4 +42,3 @@ or left the population. "n" is the estimated number of fish available for recapt
 
 This package exports a .csv file to the working directory titled "Trap name, species, today's date, formatted data.csv"
 }
-

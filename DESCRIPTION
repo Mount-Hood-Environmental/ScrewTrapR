@@ -1,4 +1,4 @@
-Package: Screw_TrapR
+Package: ScrewTrapR
 Type: Package
 Title: Rotary Screw Trap Juvenile Salmonid Abundance Estimation
 Version: 0.1.0
@@ -9,11 +9,13 @@ Author@R: c(person("Bryce", "Oldemeyer", role = c("aut", "cre"),
                      email = "Mark.Roes@mthoodenvironmental.com"))
 Maintainer: Bryce Oldemeyer <Bryce.Oldemeyer@mthoodenvironmental.com>
 Description: This package is used to calculate juvenile salmonid abundance estimates from capture-mark-recapture data collected at rotary screw traps using three primary hierarchical Bayesian models (simple-pooled, p-spline, and multi-year models).
-License: MIT
+License: UTF-8
 LazyData: TRUE
 Depends: R (>= 3.1.0)
 Imports:
-  plyr(>= 1.8.3),
+  dplyr (>= 1.0.2),
+  tidyr (>= 1.1.2),
+  purrr (>= 0.3.4),
   lubridate(>= 1.5.6),
   R2jags(>= 0.5-7),
   coda(>= 0.18-1),
@@ -23,4 +25,4 @@ Imports:
   ggmcmc(>= 0.8),
   data.table(>= 1.9.6),
   useful(>= 1.2.0)
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.3

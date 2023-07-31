@@ -4,7 +4,9 @@
 \name{Data_JTRAP_Marsh}
 \alias{Data_JTRAP_Marsh}
 \title{Example rotary screw trap data, Marsh Creek, ID, 2005-2015}
-\format{Data is formatted and ready for \code{MYTSBE()}. Originally a .CSV file}
+\format{
+Data is formatted and ready for \code{MYTSBE()}. Originally a .CSV file
+}
 \usage{
 Data_JTRAP_Marsh
 }
@@ -17,4 +19,3 @@ This is an example data of juvenile salmonids at a rotary screw trap on Marsh Cr
 \keyword{juvenile}
 \keyword{steelhead}
 \keyword{trap}
-
