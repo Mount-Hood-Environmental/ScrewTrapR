@@ -1,6 +1,6 @@
 Package: ScrewTrapR
 Type: Package
-Title: Rotary Screw Trap Juvenile Salmonid Abundance Estimation
+Title: Juvenile Salmonid Abundance Estimation Using C-M-R Data And Hierarchical Bayesian Models.
 Version: 0.1.0
 Author@R: c(person("Bryce", "Oldemeyer", role = c("aut", "cre"),
                      email = "Bryce.Oldemeyer@mthoodenvironmental.com"),

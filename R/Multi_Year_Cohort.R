@@ -1,7 +1,7 @@
 
 #' @title Multi-year time stratified Bayesian estimator (cohort summary)
 
-#' @description MYTSBE utilizes hierarchical Bayesian methods to estimate abundances from capture-mark-recapture (CMR) data using a temporally-stratified Lincoln-Petersen estimator. The between-year hierarchical
+#' @description Multi_Year_Cohort implements a multi-year hierarchical Bayesian model to estimate abundances from capture-mark-recapture (CMR) data using a temporally-stratified Lincoln-Petersen estimator. The between-year hierarchical
 #' structures allows for annually recurring species characteristics to be incorporated into capture probabilities and abundance estimates.
 #'
 #' Summary output is by cohort year.
@@ -38,7 +38,7 @@
 #' @return NULL
 
 
-MYTSBE_Cohort <- function(data,
+Multi_Year_Cohort <- function(data,
                    effort.cor = FALSE,
                    sel.years = currentyear,
                    strata.op.min = 1,
