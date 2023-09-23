@@ -38,21 +38,21 @@
 #'
 #'
 Multi_Year_Calendar <- function(data,
-                         effort.cor = FALSE,
-                         sel.years = currentyear,
-                         strata.op.min = 1,
-                         smolt.juv.date = "06-01",
-                         species = "",
-                         trap.name = "",
-                         den.plot = TRUE,
-                         trace.plot = FALSE,
-                         strata.length = s.length,
-                         burnin = 100000,
-                         chains = 3,
-                         iterations = 400000,
-                         thin = 100,
-                         boot = 5000,
-                         model.params = c("p", "U", "etaP1", "etaU1", "sigmaU", "sigmaP")) {
+                                effort.cor = FALSE,
+                                sel.years = currentyear,
+                                strata.op.min = 1,
+                                smolt.juv.date = "06-01",
+                                species = "",
+                                trap.name = "",
+                                den.plot = TRUE,
+                                trace.plot = FALSE,
+                                strata.length = s.length,
+                                burnin = 100000,
+                                chains = 3,
+                                iterations = 400000,
+                                thin = 100,
+                                boot = 5000,
+                                model.params = c("p", "U", "etaP1", "etaU1", "sigmaU", "sigmaP")) {
 
   currentyear <- max(data$year)-2
   s.length <- max(data$days)
@@ -231,6 +231,7 @@ Multi_Year_Calendar <- function(data,
 
   write.csv(outputsummary, file = paste("All",species,trap.name,"Results.csv"))
 
+  #?????????????????????????????
 
   ###########################################################
   #                      Life Stage                         #
@@ -264,9 +265,9 @@ Multi_Year_Calendar <- function(data,
 
     #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
     juvUsum<-adply(juvUdist, 2, summarise,
-                    mode=names(which.max(table(juvUdist))),
-                    mean = mean(juvUdist),sd = sd(juvUdist),
-                    niaveSE = sd(juvUdist)/sqrt(length(juvUdist)))
+                   mode=names(which.max(table(juvUdist))),
+                   mean = mean(juvUdist),sd = sd(juvUdist),
+                   niaveSE = sd(juvUdist)/sqrt(length(juvUdist)))
     juvUsum$mode <- as.numeric(juvUsum$mode)
 
     #Get quantiles for U bootstrap distribution
@@ -353,6 +354,14 @@ Multi_Year_Calendar <- function(data,
     juv1<- subset(usep, strata >= (smolt.strata+1))
     smolt1<- subset(usep, strata <= smolt.strata)
 
+    data_by_year <- outputsummary[outputsummary$Year == selectyr,]
+    u_by_year <- data_by_year %>%
+      filter(grepl("^U\\[\\d+,\\d+\\]$", Parameter))
+    p_by_year <- data_by_year %>%
+      filter(grepl("^p\\[\\d+,\\d+\\]$", Parameter))
+
+    cal.summary <- rbind(cal.summary, p_by_year)
+
     #read out files
     sink(paste(selectyr, species, trap.name, "Calendar Results.txt"), append=FALSE, split=FALSE)
     writeLines(paste( Sys.Date(),"\n",
@@ -371,14 +380,39 @@ Multi_Year_Calendar <- function(data,
 
     write.csv(cal.summary, file = paste(selectyr, species, trap.name, "Calendar Results.csv"))
 
+    ##### Figs
+
+    u_by_year$date <- format(as.Date(u_by_year$Strata*strata.length, origin = paste(u_by_year$Year, "-01-01", sep = "")), format = "%b %d %Y")
+
+    p1 <- ggplot(u_by_year, aes(x = reorder(date, Strata), y = `50%`)) +
+      geom_errorbar(aes(ymin = `2.5%`, ymax = `97.5%`), width = 0.1, col = "#56B4E9") +
+      geom_line() + geom_point() +
+      labs(y = "Estimated abundance (U)",
+           x = "Strata",
+           title = "Estimated abundance") + theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    p1
+
+    p_by_year$date <- format(as.Date(p_by_year$Strata*strata.length, origin = paste(p_by_year$Year, "-01-01", sep = "")), format = "%b %d %Y")
+
+    p2 <- ggplot(p_by_year, aes(x = reorder(date, Strata), y = `50%`)) +
+      geom_errorbar(aes(ymin = `2.5%`, ymax = `97.5%`), width = 0.1, col = "#E69F00") +
+      geom_line() + geom_point() +
+      labs(y = "Estimated capture probability (p)",
+           x = "Strata") + theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    p2
+
+    ggsave(paste(selectyr, species, trap.name, "Calendar.png"), grid.arrange(p1, p2, ncol = 1))
+
     options(scipen = 0)
   }
   if(den.plot == TRUE) {
     ggmcmc(model.fit.gg, file="U Density Plots.pdf", family="U",plot="density")
-    }
+  }
   if(trace.plot == TRUE) {
     ggmcmc(model.fit.gg, file="Trace Plot.pdf", plot="traceplot")
-    }
+  }
 }
 
 

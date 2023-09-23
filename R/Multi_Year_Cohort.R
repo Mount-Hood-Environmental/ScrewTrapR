@@ -37,24 +37,23 @@
 #' @export
 #' @return NULL
 
-
 Multi_Year_Cohort <- function(data,
-                   effort.cor = FALSE,
-                   sel.years = currentyear,
-                   strata.op.min = 1,
-                   smolt.parr.date = "07-01",
-                   parr.presmolt.date = "09-01",
-                   species = "",
-                   trap.name = "",
-                   den.plot = TRUE,
-                   trace.plot = FALSE,
-                   strata.length = s.length,
-                   burnin = 100000,
-                   chains = 3,
-                   iterations = 400000,
-                   thin = 100,
-                   boot = 5000,
-                   model.params = c("p", "U", "etaP1", "etaU1", "sigmaU", "sigmaP")) {
+                              effort.cor = FALSE,
+                              sel.years = currentyear,
+                              strata.op.min = 1,
+                              smolt.parr.date = "07-01",
+                              parr.presmolt.date = "09-01",
+                              species = "",
+                              trap.name = "",
+                              den.plot = TRUE,
+                              trace.plot = FALSE,
+                              strata.length = s.length,
+                              burnin = 100000,
+                              chains = 3,
+                              iterations = 4000,
+                              thin = 100,
+                              boot = 500,
+                              model.params = c("p", "U", "etaP1", "etaU1", "sigmaU", "sigmaP")) {
 
 
   currentyear <- max(data$year)-2
@@ -242,6 +241,7 @@ Multi_Year_Cohort <- function(data,
   parr.strata <- round(yday(as.Date(parr.date))/strata.length) - (min(data$strata)-1) # convert parr cutoff date to strata
 
   for(selectyr in sel.years){
+
     #remove U parameters for parr and presmolt
     pyear <- (selectyr+2) - (as.numeric(min(data$year)))
 
@@ -250,119 +250,160 @@ Multi_Year_Cohort <- function(data,
     usep.p$strata <- sub(".*?U(.*?)(,.*|$)", "\\1", usep.p$Parameter) #create strata variable
     usep.p$strata <- as.numeric(substr(usep.p$strata, 2, 5)) #clean strata variable
 
-    parr<- subset(usep.p, strata >= (smolt.strata) & strata <= (parr.strata-1))
+    # adding the if condition so the code does not run for 2 years before the minimum year in the data
+    if(min(data$year) - selectyr < 2){
 
-    parr<-subset(parr, !(parr$strata %in% excl.strata$strata)) # exclude strata under the strata.op.min threshold
+      parr<- subset(usep.p, strata >= (smolt.strata) & strata <= (parr.strata-1))
 
-    parrdt<-as.data.table(parr)
+      parr<-subset(parr, !(parr$strata %in% excl.strata$strata)) # exclude strata under the strata.op.min threshold
 
-    parrUdist = numeric(boot); # set aside an empty vector for bootstrap disribution of the mean
-    for (i in 1:boot)
-    {parrUdist[i] <- sum(parrdt[, value[sample.int(.N, 1, TRUE)], by = strata]) - sum(unique(parrdt$strata))
+      parrdt<-as.data.table(parr)
+
+      parrUdist = numeric(boot); # set aside an empty vector for bootstrap disribution of the mean
+      for (i in 1:boot){
+
+        parrUdist[i] <- sum(parrdt[, value[sample.int(.N, 1, TRUE)], by = strata]) - sum(unique(parrdt$strata))
+
+      }
+
+      parrUdist<-as.data.frame(parrUdist) #change output to dataframe
+      parrUdist$parrUdist<-as.numeric(parrUdist$parrUdist) #change output to numeric
+
+      write.table(parrUdist, file = paste(selectyr,"Parr U distribution.txt"), sep="\t")
+
+      #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
+      parrUsum<-adply(parrUdist, 2, summarise,
+                      mode=names(which.max(table(parrUdist))),
+                      mean = mean(parrUdist),sd = sd(parrUdist),
+                      niaveSE = sd(parrUdist)/sqrt(length(parrUdist)))
+      parrUsum$mode <- as.numeric(parrUsum$mode)
+
+      #Get quantiles for U bootstrap distribution
+      parrUquantiles<-adply(parrUdist, 2, function (x) quantile(x$parrUdist, c(0.025, 0.25, 0.5, 0.75, 0.975)))
+
+      parrUoutputsummary <- merge(parrUquantiles, parrUsum, by.x="X1")
+      parrUoutputsummary$X1 <- NULL #removed X1 variable
+      parrUoutputsummary$Parameter<-paste("Parr U Cohort",selectyr) # add Parameter variable
+      parrUoutputsummary$Year<- selectyr+1 #add year variable
+
+      #########Pre smolt###############
+
+      presmolt<- subset(usep.p, strata >= parr.strata)
+
+      presmolt<-subset(presmolt, !(presmolt$strata %in% excl.strata$strata)) # exclude strata under the strata.op.min threshold
+
+      presmoltdt<-as.data.table(presmolt)
+
+      presmoltUdist = numeric(boot); # set aside an empty vector for bootstrap disribution of the mean
+      for (i in 1:boot)
+      {presmoltUdist[i] <- sum(presmoltdt[, value[sample.int(.N, 1, TRUE)], by = strata]) - sum(unique(presmoltdt$strata))
+      }
+
+      presmoltUdist<-as.data.frame(presmoltUdist) #change output to dataframe
+      presmoltUdist$presmoltUdist<-as.numeric(presmoltUdist$presmoltUdist) #change output to numeric
+
+      write.table(presmoltUdist, file = paste(selectyr,"Presmolt U distribution.txt"), sep="\t")
+
+      #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
+      presmoltUsum<-adply(presmoltUdist, 2, summarise,
+                          mode=names(which.max(table(presmoltUdist))),
+                          mean = mean(presmoltUdist),sd = sd(presmoltUdist),
+                          niaveSE = sd(presmoltUdist)/sqrt(length(presmoltUdist)))
+      presmoltUsum$mode <- as.numeric(presmoltUsum$mode)
+
+      #Get quantiles for U bootstrap distribution
+      presmoltUquantiles<-adply(presmoltUdist, 2, function (x) quantile(x$presmoltUdist, c(0.025, 0.25, 0.5, 0.75, 0.975)))
+
+      presmoltUoutputsummary <- merge(presmoltUquantiles, presmoltUsum, by.x="X1")
+      presmoltUoutputsummary$X1 <- NULL #removed X1 variable
+      presmoltUoutputsummary$Parameter<-paste("Presmolt U Cohort",selectyr) # add Parameter variable
+      presmoltUoutputsummary$Year<- selectyr+1 #add year variable
+
     }
-
-    parrUdist<-as.data.frame(parrUdist) #change output to dataframe
-    parrUdist$parrUdist<-as.numeric(parrUdist$parrUdist) #change output to numeric
-
-    write.table(parrUdist, file = paste(selectyr,"Parr U distribution.txt"), sep="\t")
-
-    #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
-    parrUsum<-adply(parrUdist, 2, summarise,
-                    mode=names(which.max(table(parrUdist))),
-                    mean = mean(parrUdist),sd = sd(parrUdist),
-                    niaveSE = sd(parrUdist)/sqrt(length(parrUdist)))
-    parrUsum$mode <- as.numeric(parrUsum$mode)
-
-    #Get quantiles for U bootstrap distribution
-    parrUquantiles<-adply(parrUdist, 2, function (x) quantile(x$parrUdist, c(0.025, 0.25, 0.5, 0.75, 0.975)))
-
-    parrUoutputsummary <- merge(parrUquantiles, parrUsum, by.x="X1")
-    parrUoutputsummary$X1 <- NULL #removed X1 variable
-    parrUoutputsummary$Parameter<-paste("Parr U Cohort",selectyr) # add Parameter variable
-    parrUoutputsummary$Year<- selectyr+1 #add year variable
-
-    #########Pre smolt###############
-
-    presmolt<- subset(usep.p, strata >= parr.strata)
-
-    presmolt<-subset(presmolt, !(presmolt$strata %in% excl.strata$strata)) # exclude strata under the strata.op.min threshold
-
-    presmoltdt<-as.data.table(presmolt)
-
-    presmoltUdist = numeric(boot); # set aside an empty vector for bootstrap disribution of the mean
-    for (i in 1:boot)
-    {presmoltUdist[i] <- sum(presmoltdt[, value[sample.int(.N, 1, TRUE)], by = strata]) - sum(unique(presmoltdt$strata))
-    }
-
-    presmoltUdist<-as.data.frame(presmoltUdist) #change output to dataframe
-    presmoltUdist$presmoltUdist<-as.numeric(presmoltUdist$presmoltUdist) #change output to numeric
-
-    write.table(presmoltUdist, file = paste(selectyr,"Presmolt U distribution.txt"), sep="\t")
-
-    #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
-    presmoltUsum<-adply(presmoltUdist, 2, summarise,
-                        mode=names(which.max(table(presmoltUdist))),
-                        mean = mean(presmoltUdist),sd = sd(presmoltUdist),
-                        niaveSE = sd(presmoltUdist)/sqrt(length(presmoltUdist)))
-    presmoltUsum$mode <- as.numeric(presmoltUsum$mode)
-
-    #Get quantiles for U bootstrap distribution
-    presmoltUquantiles<-adply(presmoltUdist, 2, function (x) quantile(x$presmoltUdist, c(0.025, 0.25, 0.5, 0.75, 0.975)))
-
-    presmoltUoutputsummary <- merge(presmoltUquantiles, presmoltUsum, by.x="X1")
-    presmoltUoutputsummary$X1 <- NULL #removed X1 variable
-    presmoltUoutputsummary$Parameter<-paste("Presmolt U Cohort",selectyr) # add Parameter variable
-    presmoltUoutputsummary$Year<- selectyr+1 #add year variable
 
     ########## Smolt #############
 
-    syear <- (selectyr+3) - (as.numeric(min(data$year)))
+    # adding the if condition so the code does not run for a year before the maximum year in the data
+    if(max(data$year) - selectyr > 1){
 
-    usep.s <- subset(usep,grepl(paste(",",syear,"]$" , sep = ""), Parameter)) #subset U's for first year
-    usep.s$strata <- sub(".*?U(.*?)(,.*|$)", "\\1", usep.s$Parameter) #create strata variable
-    usep.s$strata <- as.numeric(substr(usep.s$strata, 2, 5)) #clean strata variable
+      syear <- (selectyr+3) - (as.numeric(min(data$year)))
 
-    smolt<- subset(usep.s, strata < smolt.strata)
+      usep.s <- subset(usep,grepl(paste(",",syear,"]$" , sep = ""), Parameter)) #subset U's for first year
+      usep.s$strata <- sub(".*?U(.*?)(,.*|$)", "\\1", usep.s$Parameter) #create strata variable
+      usep.s$strata <- as.numeric(substr(usep.s$strata, 2, 5)) #clean strata variable
 
-    smolt<-subset(smolt, !(smolt$strata %in% excl.strata$strata)) # exclude strata under the strata.op.min threshold
+      smolt<- subset(usep.s, strata < smolt.strata)
 
-    smoltdt<-as.data.table(smolt)
+      smolt<-subset(smolt, !(smolt$strata %in% excl.strata$strata)) # exclude strata under the strata.op.min threshold
 
-    smoltUdist = numeric(boot); # set aside an empty vector for bootstrap disribution of the mean
-    for (i in 1:boot)
-    {smoltUdist[i] <- sum(smoltdt[, value[sample.int(.N, 1, TRUE)], by = strata]) - sum(unique(smoltdt$strata))
+      smoltdt<-as.data.table(smolt)
+
+      smoltUdist = numeric(boot); # set aside an empty vector for bootstrap disribution of the mean
+      for (i in 1:boot)
+      {smoltUdist[i] <- sum(smoltdt[, value[sample.int(.N, 1, TRUE)], by = strata]) - sum(unique(smoltdt$strata))
+      }
+
+      write.table(smoltUdist, file = paste(selectyr,"Smolt U distribution.txt"), sep="\t")
+
+      smoltUdist<-as.data.frame(smoltUdist) #change output to dataframe
+      smoltUdist$smoltUdist<-as.numeric(smoltUdist$smoltUdist) #change output to numeric
+
+      #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
+      smoltUsum<-adply(smoltUdist, 2, summarise,
+                       mode=names(which.max(table(smoltUdist))),
+                       mean = mean(smoltUdist),sd = sd(smoltUdist),
+                       niaveSE = sd(smoltUdist)/sqrt(length(smoltUdist)))
+      smoltUsum$mode <- as.numeric(smoltUsum$mode)
+
+      #Get quantiles for U bootstrap distribution
+      smoltUquantiles<-adply(smoltUdist, 2, function (x) quantile(x$smoltUdist, c(0.025, 0.25, 0.5, 0.75, 0.975)))
+
+      smoltUoutputsummary <- merge(smoltUquantiles, smoltUsum, by.x="X1")
+      smoltUoutputsummary$X1 <- NULL #removed X1 variable
+      smoltUoutputsummary$Parameter<-paste("Smolt U Cohort",selectyr) # add Parameter variable
+      smoltUoutputsummary$Year<- selectyr+2 #add year variable
+
     }
-
-    write.table(smoltUdist, file = paste(selectyr,"Smolt U distribution.txt"), sep="\t")
-
-    smoltUdist<-as.data.frame(smoltUdist) #change output to dataframe
-    smoltUdist$smoltUdist<-as.numeric(smoltUdist$smoltUdist) #change output to numeric
-
-    #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
-    smoltUsum<-adply(smoltUdist, 2, summarise,
-                     mode=names(which.max(table(smoltUdist))),
-                     mean = mean(smoltUdist),sd = sd(smoltUdist),
-                     niaveSE = sd(smoltUdist)/sqrt(length(smoltUdist)))
-    smoltUsum$mode <- as.numeric(smoltUsum$mode)
-
-    #Get quantiles for U bootstrap distribution
-    smoltUquantiles<-adply(smoltUdist, 2, function (x) quantile(x$smoltUdist, c(0.025, 0.25, 0.5, 0.75, 0.975)))
-
-    smoltUoutputsummary <- merge(smoltUquantiles, smoltUsum, by.x="X1")
-    smoltUoutputsummary$X1 <- NULL #removed X1 variable
-    smoltUoutputsummary$Parameter<-paste("Smolt U Cohort",selectyr) # add Parameter variable
-    smoltUoutputsummary$Year<- selectyr+2 #add year variable
 
     #setup bootstrap to randomly draw samples from each distribution in order to obtain total U statistics
 
-    totUdist = numeric(boot); # set aside an empty vector for bootstrap disribution of the mean
-    for (i in 1:boot)
-    {totUdist[i] <- sum(parrdt[, value[sample.int(.N, 1, TRUE)], by = strata]) +
-      sum(presmoltdt[, value[sample.int(.N, 1, TRUE)], by = strata]) +
-      sum(smoltdt[, value[sample.int(.N, 1, TRUE)], by = strata]) -
-      sum(unique(parrdt$strata)) -
-      sum(unique(presmoltdt$strata)) -
-      sum(unique(smoltdt$strata))
+    # adding the if condition so the code does not run for a year before the maximum year in the data
+    if(max(data$year) - selectyr > 1){
+
+      # adding the if condition so the code only runs for 2 years before the minimum year in the data
+      if(min(data$year) - selectyr == 2){
+
+        totUdist = numeric(boot); # set aside an empty vector for bootstrap disribution of the mean
+        for (i in 1:boot)
+        {totUdist[i] <- sum(smoltdt[, value[sample.int(.N, 1, TRUE)], by = strata]) -
+          sum(unique(smoltdt$strata))
+        }
+
+        # the code runs for years before the (maximum year-1) and except (min year - 2)
+      }else{
+
+        totUdist = numeric(boot); # set aside an empty vector for bootstrap disribution of the mean
+        for (i in 1:boot)
+        {totUdist[i] <- sum(parrdt[, value[sample.int(.N, 1, TRUE)], by = strata]) +
+          sum(presmoltdt[, value[sample.int(.N, 1, TRUE)], by = strata]) +
+          sum(smoltdt[, value[sample.int(.N, 1, TRUE)], by = strata]) -
+          sum(unique(parrdt$strata)) -
+          sum(unique(presmoltdt$strata)) -
+          sum(unique(smoltdt$strata))
+        }
+      }
+
+      # the code does runs for a year before the maximum year in the data (no smolt info in this case)
+    }else{
+
+      totUdist = numeric(boot); # set aside an empty vector for bootstrap disribution of the mean
+      for (i in 1:boot)
+      {totUdist[i] <- sum(parrdt[, value[sample.int(.N, 1, TRUE)], by = strata]) +
+        sum(presmoltdt[, value[sample.int(.N, 1, TRUE)], by = strata]) -
+        sum(unique(parrdt$strata)) -
+        sum(unique(presmoltdt$strata))
+      }
+
     }
 
     #Get summary statistics for U bootstrapped distribution
@@ -388,9 +429,20 @@ Multi_Year_Cohort <- function(data,
     ######### Cohort strata used #########
     parr1<- subset(usep.p, strata >= (smolt.strata) & strata <= (parr.strata-1))
     presmolt1<- subset(usep.p, strata >= parr.strata)
-    smolt1<- subset(usep.s, strata < smolt.strata)
 
-    cohort.strata <- rbind(parr1,presmolt1,smolt1)
+    # adding the if condition so the code does not run for a year before the maximum year in the data
+    if(max(data$year) - selectyr > 1){
+
+      smolt1<- subset(usep.s, strata < smolt.strata)
+
+      cohort.strata <- rbind(parr1,presmolt1,smolt1)
+
+      # the code does runs for a year before the maximum year in the data (no smolt info in this case)
+    }else{
+
+      cohort.strata <- rbind(parr1,presmolt1)
+
+    }
 
     cmeans<-ddply(cohort.strata, "Parameter", summarise,
                   mode=names(which.max(table(value))),
@@ -418,9 +470,48 @@ Multi_Year_Cohort <- function(data,
     coutputsummary[is.num] <- lapply(coutputsummary[is.num], round, 3) #reduce digits
     coutputsummary<-coutputsummary[with(coutputsummary, order(Year,Parameter)), ] #reorder by year and parameter
 
-    cohortsummary<-rbind.fill(totUoutputsummary,parrUoutputsummary,presmoltUoutputsummary, smoltUoutputsummary, coutputsummary) #merge outputs
+    # adding the if condition so the code does not run for a year before the maximum year in the data
+    if(max(data$year) - selectyr > 1){
+
+      # adding the if condition so the code only runs for 2 years before the minimum year in the data
+      if(min(data$year) - selectyr == 2){
+
+        cohortsummary<-rbind.fill(totUoutputsummary, smoltUoutputsummary, coutputsummary) #merge outputs
+
+        # the code runs for years before the (maximum year-1) and except (min year - 2)
+      }else{
+
+        cohortsummary<-rbind.fill(totUoutputsummary,parrUoutputsummary,presmoltUoutputsummary, smoltUoutputsummary, coutputsummary) #merge outputs
+
+      }
+
+      # the code does runs for a year before the maximum year in the data (no smolt info in this case)
+    }else{
+
+      cohortsummary<-rbind.fill(totUoutputsummary,parrUoutputsummary,presmoltUoutputsummary, coutputsummary) #merge outputs
+
+    }
 
     cohortsummary <- cohortsummary[,c(10:12,1:9)]
+
+    data_by_year <- cohortsummary
+
+    u_by_year <- cohortsummary %>%
+      filter(grepl("^U\\[\\d+,\\d+\\]$", Parameter))
+
+    # Define the pattern to match
+    pattern <- "\\[(\\d+,\\d+)\\]"  # This pattern matches Parameter column format
+
+    # Use regmatches to extract matching parts
+    extracted_parts1 <- regmatches(u_by_year$Parameter, regexpr(pattern, u_by_year$Parameter))
+
+    extracted_parts2 <- regmatches(outputsummary$Parameter, regexpr(pattern, outputsummary$Parameter))
+
+    rows <- match(extracted_parts1, extracted_parts2)
+
+    p_by_year <- outputsummary[rows,c(3,1:2,4:12)]
+
+    cohortsummary <- rbind(cohortsummary, p_by_year)
 
     #read out files
     sink(paste(selectyr, species, trap.name, "Cohort Results.txt"), append=FALSE, split=FALSE)
@@ -440,6 +531,33 @@ Multi_Year_Cohort <- function(data,
     sink()
 
     write.csv(cohortsummary, file = paste(selectyr, species, trap.name, "Cohort Results.csv"))
+
+    ##### Figs
+
+    u_by_year$date <- format(as.Date(u_by_year$strata*strata.length, origin = paste(u_by_year$Year, "-01-01", sep = "")), format = "%b %d %Y")
+
+    p1 <- ggplot(u_by_year, aes(x = reorder(reorder(date, strata), Year), y = `50%`)) +
+      geom_errorbar(aes(ymin = `2.5%`, ymax = `97.5%`), width = 0.1, col = "#56B4E9") +
+      geom_line() +
+      geom_point() +
+      labs(y = "Estimated abundance (U)", x = "Strata", title = "Estimated Abundance") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+    p1
+
+    p_by_year$date <- format(as.Date(p_by_year$strata*strata.length, origin = paste(p_by_year$Year, "-01-01", sep = "")), format = "%b %d %Y")
+
+    p2 <- ggplot(p_by_year, aes(x = reorder(reorder(date, strata), Year), y = `50%`)) +
+      geom_errorbar(aes(ymin = `2.5%`, ymax = `97.5%`), width = 0.1, col = "#E69F00") +
+      geom_line() + geom_point() +
+      labs(y = "Estimated capture probability (p)", x = "Strata") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+    p2
+
+    ggsave(paste(selectyr, species, trap.name, "Cohort.png"), grid.arrange(p1, p2, ncol = 1))
 
     options(scipen = 0)
 

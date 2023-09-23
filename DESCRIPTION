@@ -4,7 +4,6 @@ Title: Juvenile Salmonid Abundance Estimation Using C-M-R Data And Hierarchical 
 Version: 0.1.0
 Author@R: c(person("Bryce", "Oldemeyer", role = c("aut", "cre"),
                      email = "Bryce.Oldemeyer@mthoodenvironmental.com"),
-              person("Bandita", "Karki", role = "aut", email = "Bandita.Karki@mthoodenvironmental.com"),
               person("Mark", "Roes", role = "aut",
                      email = "Mark.Roes@mthoodenvironmental.com"))
 Maintainer: Bryce Oldemeyer <Bryce.Oldemeyer@mthoodenvironmental.com>
