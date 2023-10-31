@@ -1,42 +1,4 @@
 
-#' @title Multi-year time stratified Bayesian estimator (calendar year summary)
-
-#' @description Multi_Year_Calendar implements a multi-year hierarchical Bayesian model to estimate abundances from capture-mark-recapture (CMR) data using a temporally-stratified Lincoln-Petersen estimator. The between-year hierarchical
-#' structures allows for annually recurring species characteristics to be incorporated into capture probabilities and abundance estimates.
-#'
-#' Summary output is by calendar year.
-#'
-#' Peer reviewed publication can be found at ...
-#'
-#' @param data capture-mark-recapture data frame
-#' @param burnin number of initial MCMC chain iterations to be discarded
-#' @param chains number of MCMC chains (>1)
-#' @param iterations number of MCMC iterations per chain
-#' @param thin thin rate for MCMC chains
-#' @param sel.years selected year(s) to compute abundance estimates
-#' @param boot number of boot strap iterations to calculate yearly and life stage abundance estimates
-#' @param species character string used for titles and descriptions of reports
-#' @param model.params parameters to be returned from MCMC simulation
-#' @param trap.name character string used for titles and descriptions of reports
-#' @param effort.cor expands the number of unmarked fish captured by a sampling effort
-#' @param strata.length number of days in strata
-#' @param smolt.juv.date "MM-DD" date to partition smolt life stage
-#' @param strata.op.min minimum number of years data need to have been collected in a stratum to be included in summary
-#' @param den.plot return density plots of MCMC chains
-#' @param trace.plot return trace plots of MCMC chains
-#' @import plyr
-#' @importFrom lubridate yday
-#' @importFrom R2jags jags
-#' @import coda
-#' @import lattice
-#' @import superdiag
-#' @import mcmcplots
-#' @import ggmcmc
-#' @importFrom data.table as.data.table
-#' @export
-#' @return NULL
-#'
-#'
 Multi_Year_Calendar <- function(data,
                                 effort.cor = FALSE,
                                 sel.years = currentyear,
@@ -45,19 +7,25 @@ Multi_Year_Calendar <- function(data,
                                 species = "",
                                 trap.name = "",
                                 den.plot = TRUE,
-                                trace.plot = FALSE,
+                                trace.plot = TRUE,
                                 strata.length = s.length,
-                                burnin = 100000,
+                                burnin = 200000,
                                 chains = 3,
                                 iterations = 400000,
-                                thin = 100,
+                                thin = 200,
                                 boot = 5000,
                                 model.params = c("p", "U", "etaP1", "etaU1", "sigmaU", "sigmaP")) {
+
+  if (max(sel.years) > max(data$year)) {
+    stop(paste("ERROR: A selected calendar year is outside of the range of your dataset. Please modify your sel.years().", sep =""))
+  }
+  if (min(sel.years) < min(data$year)) {
+    stop(paste("ERROR: A selected calendar year is outside of the range of your dataset. Please modify your sel.years().", sep =""))
+  }
 
   currentyear <- max(data$year)-2
   s.length <- max(data$days)
   smolt.date <- paste("2010-",smolt.juv.date, sep ="")
-
 
   model <- function() {
     for(i in 1:strata){
@@ -94,8 +62,12 @@ Multi_Year_Calendar <- function(data,
   #U updated for effort correction factor
   data$cor.factor <-data$effort/data$days
   data$u.cor <- round(data$u*(1/(data$effort/data$days)))
+
+  data$strata_date<-format(as.Date(data$strata*strata.length,
+                                   origin = paste(data$year, "-01-01", sep = "")))
+
   if(effort.cor == TRUE) {
-    datau=matrix(round(data$u*(1/(data$effort/data$days))), nrow=length(unique(data$strata)), ncol=length(unique(data$year)))
+    datau=matrix(data$u.cor, nrow=length(unique(data$strata)), ncol=length(unique(data$year)))
   } else {
     datau=matrix(data$u,nrow=length(unique(data$strata)), ncol=length(unique(data$year)))
   }
@@ -115,131 +87,195 @@ Multi_Year_Calendar <- function(data,
 
   model.fit <- jags(data = model.data, inits = NULL,
                     parameters.to.save = model.params, n.chains = chains, n.iter = iterations,
-                    n.burnin = burnin, model.file = model)
+                    n.burnin = burnin, model.file = model, n.thin = thin)
 
   #######################################################################################################################
-
-  #Add in progress bar here!
 
   model.fit.mcmc <- as.mcmc(model.fit) #call model.fit from rjags
   model.fit.gg <- suppressWarnings(ggs(model.fit.mcmc)) #convert model.fit.mcmc to gg output (useable dataframe)
 
   options(scipen = 999) #change scientific notation
 
-  #export data used for the model
-  sink("Input Data.txt", append=FALSE, split=FALSE)
+  main_folder <- paste(species,"_",trap.name,"_",format(Sys.Date(), "%Y_%m_%d"),sep = "")
+  dir.create(main_folder)
+  dir.create(paste(main_folder,"/Inputs",sep = ""))
+  dir.create(paste(main_folder,"/MCMC_Chains",sep = ""))
+  dir.create(paste(main_folder,"/Model_Diagnostics",sep = ""))
+  dir.create(paste(main_folder,"/Results",sep = ""))
+  dir.create(paste(main_folder,"/Results/General",sep = ""))
+
+  #########################
+  # Input Data & Function #
+  #########################
+
+  options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink
+
+  data<-data[,c(2,3,14,4:13)]
+
+  sink(paste(main_folder,"/Inputs/Input_Data.txt",sep = ""), append=FALSE, split=FALSE)
   print(data)
   sink()
 
-  #export mcmc chains
+  write.csv(data, file = paste(main_folder,"/Inputs/Input_Data.csv",sep = ""))
 
-  #need a for loop here############################################
+  sink(paste(main_folder,"/Inputs/Function_Inputs.txt",sep = ""), append=FALSE, split=FALSE)
+  writeLines(paste(Sys.Date(),"\n",
+                   "Multi_Year_Calendar()", "\n",
+                   "effort.cor = ",effort.cor, "\n",
+                   "sel.years = ", paste(sel.years, collapse = ", "), "\n",
+                   "strata.op.min = ", strata.op.min, "\n",
+                   "smolt.juv.date = ", smolt.juv.date, "\n",
+                   "species = ", species, "\n",
+                   "trap.name = ", trap.name, "\n",
+                   "den.plot = ", den.plot, "\n",
+                   "trace.plot =", trace.plot, "\n",
+                   "strata.length =", strata.length, "\n",
+                   "burnin = ", burnin,"\n",
+                   "chains =", chains, "\n",
+                   "iterations =", iterations, "\n",
+                   "thin = ",thin,"\n",
+                   "boot = ", boot,"\n",
+                   "model.params = ", paste(model.params, collapse = ", "),"\n"))
+  sink()
+
+
+  ######################
+  # Export MCMC chains #
+  ######################
+
   for(i in 1:chains){
     chain <- model.fit.gg[model.fit.gg$Chain == i,]
-    write.table(chain, file = paste("MCMC Chains", i,".txt"), sep="\t")
+    write.table(chain, file = paste(main_folder,"/MCMC_Chains/MCMC_Chains", i,".txt", sep = ""), sep="\t")
   }
 
-  #############
-  #Diagnostics#
-  #############
+  ###############
+  # Diagnostics #
+  ###############
+
   gd <- gelman.diag(model.fit.mcmc, confidence = 0.95, transform=FALSE, autoburnin=TRUE,
                     multivariate=FALSE)
 
   gdata <-as.data.frame(gd[1])
   gdata <- cbind(Parameter = rownames(gdata), gdata)
-  colnames(gdata) <- c("Parameter", "Point.est", "Upper.CI")
-  nonconv.gd <- gdata[gdata$Point.est > 1.1,]
+  colnames(gdata) <- c("Parameter", "Point_est", "Upper_CI")
+  nonconv.gd <- gdata[gdata$Point_est > 1.1,]
   nonconv.gd <- droplevels(nonconv.gd)
 
   nc.gd<-as.character(nonconv.gd$Parameter)
 
-  sink("GR Diagnostic Test Results.txt", append=FALSE, split=FALSE)
+  if (length(nc.gd) == 0) {
+    nc.gd <- "   *  All Gelman-Rubin Statistics <1.1  *   "
+  }
 
-  writeLines(paste( Sys.Date(),"\n",
-                    "\n",
-                    "Number of chains =", chains,"\n",
-                    "Number of iterations per chain =", iterations, "\n",
-                    "Burn in =", burnin,"\n",
-                    "\n",
-                    "********** The Gelman-Rubin diagnostic: **********","\n","\n",
-                    "\n",
-                    "\n",
-                    "   *  Flagged parameters with point est. >1.1  *  ", "\n",
-                    "\n",
-                    paste(nc.gd, collapse=', ' ),
-                    "\n",
-                    "\n"))
+  sink(paste(main_folder,"/Model_Diagnostics/GR_Statistic.txt",sep = ""), append=FALSE, split=FALSE)
+
+  writeLines(paste(Sys.Date(),"\n",
+                   "\n",
+                   "Number of chains =", chains,"\n",
+                   "Number of iterations per chain =", iterations, "\n",
+                   "Burn in =", burnin,"\n",
+                   "\n",
+                   "********** The Gelman-Rubin Statistic: **********","\n",
+                   "\n",
+                   "   ***  Flagged parameters with G-R point est. >1.1  ***  ", "\n",
+                   "\n",
+                   paste(nc.gd, collapse=', ' ),
+                   "\n",
+                   "\n"))
   print(gd)
 
   sink()
 
-  ###################
-  #Manual Statistics#
-  ###################
+  if(den.plot == TRUE) {
+    ggmcmc(model.fit.gg, file=paste(main_folder,"/Model_Diagnostics/Density_Plots.pdf",sep = ""), plot="density")
+  }
+  if(trace.plot == TRUE) {
+    ggmcmc(model.fit.gg, file=paste(main_folder,"/Model_Diagnostics/Trace_Plots.pdf",sep = ""), plot="traceplot")
+  }
 
-  #apply descriptive statistic functions to parameter values over all chains & iterations
-  means<-ddply(model.fit.gg, "Parameter", summarise,
-               mode=names(which.max(table(value))),
-               mean = mean(value),sd = sd(value),
-               niaveSE = sd(value)/sqrt(length(value)))
+  #####################
+  # Manual Statistics #
+  #####################
 
-  #get quantiles for each parameter
-  means$mode<-as.numeric(means$mode)
-  quantiles<-ddply(model.fit.gg, "Parameter", function (x) quantile(x$value, c(0.025, 0.25, 0.5, 0.75, 0.975)))
+  # summary statistic by parameter for all chains & iterations
+  outputsummary <- model.fit.gg %>%
+    group_by(Parameter) %>%
+    summarise(
+      mode = as.numeric(names(which.max(table(value)))),
+      mean = mean(value),
+      sd = sd(value),
+      naiveSE = sd / sqrt(n()),
+      quantile_2.5 = quantile(value, probs = 0.025),
+      quantile_25 = quantile(value, probs = 0.25),
+      quantile_50 = quantile(value, probs = 0.5),
+      quantile_75 = quantile(value, probs = 0.75),
+      quantile_97.5 = quantile(value, probs = 0.975))
 
   #add year variable
-  quantiles$Year<-NA
+  outputsummary$year<-NA
   for(j in 1:length(unique(data$year))){
-    quantiles$Year<-ifelse(grepl(paste(",",j,"]$" , sep = ""), quantiles$Parameter), min(data$year-1)+j, quantiles$Year)
+    outputsummary$year<-ifelse(grepl(paste(",",j,"]$" , sep = ""), outputsummary$Parameter), min(data$year-1)+j, outputsummary$year)
   }
 
   #add strata variable
-  quantiles$Strata<-NA
+  outputsummary$strata<-NA
   for(s in 1:length(unique(data$strata))){
-    quantiles$Strata<-ifelse(grepl(paste(s,",", sep = ""), quantiles$Parameter), min(data$strata-1)+s, quantiles$Strata)
+    outputsummary$strata<-ifelse(grepl(paste(s,",", sep = ""), outputsummary$Parameter), min(data$strata-1)+s, outputsummary$strata)
   }
 
-  #merge summary statistics and quantiles
-  outputsummary <- merge(quantiles, means, by.x="Parameter") # Merge statistics
-  is.num <- sapply(outputsummary, is.numeric) #reduce digits
-  outputsummary[is.num] <- lapply(outputsummary[is.num], round, 3) #reduce digits
-  outputsummary<-outputsummary[with(outputsummary, order(Year,Parameter)), ] #reorder by year and parameter
+  # clean up summary stats
+  outputsummary <- outputsummary %>%
+    rename("parameter" = "Parameter",
+           "mig_year"="year") %>%
+    mutate(across(where(is.numeric), ~ round(., 3))) %>%
+    arrange(mig_year, parameter)
 
-  ag.strata<- aggregate(ceiling(data$cor.factor), by=list(strata=data$strata), FUN=sum)
-  excl.strata <-ag.strata[ag.strata$x < strata.op.min,]
-  x.strata<-as.character(excl.strata$strata)
+  outputsummary$strata_date<-format(as.Date(outputsummary$strata*strata.length,
+                                            origin = paste(outputsummary$mig_year, "-01-01", sep = "")))
 
-  outputsummary <- outputsummary[,c(7:8,1:6,9:12)]
+  # find strata that are below the minimum strata operation threshold.
+  ag.strata <- aggregate(ceiling(data$cor.factor), by=list(strata=data$strata), FUN=sum)
+  excl.strata <- ag.strata[ag.strata$x < strata.op.min,]
+  x.strata <- as.character(excl.strata$strata)
 
-  sink(paste("All",species,trap.name,"Results.txt"), append=FALSE, split=FALSE)
+  #reorder output
+  outputsummary <- outputsummary[,c(1,12,13,11,6:10,2:5 )]
+
+  sink(paste(main_folder,"/Results/General/All_",species,"_",trap.name,"_Results.txt",sep = ""), append=FALSE, split=FALSE)
   writeLines(paste( Sys.Date(),"\n",
                     "\n",
                     species, trap.name,"\n",
                     "Number of chains =", chains,"\n",
                     "Number of iterations per chain =", iterations, "\n",
                     "Burn in =", burnin,"\n",
-                    "* Strata with <", strata.op.min, "year(s) of operation  * ", "\n",
+                    "Thin rate =",thin, "\n",
+                    "\n",
+                    "* Excluded strata with <", strata.op.min, "year(s) of operation (selected minimum operational threshold) * ", "\n",
                     paste(x.strata, collapse=', ' ),
                     "\n",
-                    "*  Flagged parameters with point est. >1.1  *  ", "\n",
+                    "* Flagged parameters with Gelman-Rubin statistic >1.1  *  ", "\n",
                     paste(nc.gd, collapse=', ' ),
                     "\n"
   )
   )
-  print(outputsummary)
+
+  print(as.data.frame(outputsummary))
   sink()
 
-  write.csv(outputsummary, file = paste("All",species,trap.name,"Results.csv"))
-
-  #?????????????????????????????
+  write.csv(outputsummary, file = paste(main_folder,"/Results/General/All_",species,"_",trap.name,"_Results.csv",sep = ""))
 
   ###########################################################
   #                      Life Stage                         #
   ###########################################################
 
-  smolt.strata <- ceiling(yday(as.Date(smolt.date))/strata.length) - (min(data$strata)-1) # convert to smolt cutoff date to strata
+  smolt.strata <- round(yday(as.Date(smolt.date))/strata.length) - (min(data$strata)-1) # convert to smolt cutoff date to strata
+
+  selectyr = 2019
 
   for(selectyr in sel.years){
+
+    dir.create(paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Calendar",sep = ""))
+
     syear <- (selectyr+1) - (as.numeric(min(data$year)))
 
     usep <- subset(model.fit.gg,grepl("^U", Parameter)) #subset all U's
@@ -261,22 +297,24 @@ Multi_Year_Calendar <- function(data,
     juvUdist<-as.data.frame(juvUdist) #change output to dataframe
     juvUdist$juvUdist<-as.numeric(juvUdist$juvUdist) #change output to numeric
 
-    write.table(juvUdist, file = paste(selectyr,"Juvenile U distribution.txt"), sep="\t")
+    write.table(juvUdist, file = paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Calendar/",
+                                       selectyr,"_",species,"_",trap.name,"_Juv_U_Dist.txt",sep = ""), sep="\t")
 
     #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
-    juvUsum<-adply(juvUdist, 2, summarise,
-                   mode=names(which.max(table(juvUdist))),
-                   mean = mean(juvUdist),sd = sd(juvUdist),
-                   niaveSE = sd(juvUdist)/sqrt(length(juvUdist)))
-    juvUsum$mode <- as.numeric(juvUsum$mode)
+    juvUoutputsummary <- juvUdist %>%
+      summarise(
+        mode = as.numeric(names(which.max(table(juvUdist)))),
+        mean = mean(juvUdist),
+        sd = sd(juvUdist),
+        naiveSE = sd / sqrt(n()),
+        quantile_2.5 = quantile(juvUdist, probs = 0.025),
+        quantile_25 = quantile(juvUdist, probs = 0.25),
+        quantile_50 = quantile(juvUdist, probs = 0.5),
+        quantile_75 = quantile(juvUdist, probs = 0.75),
+        quantile_97.5 = quantile(juvUdist, probs = 0.975))
 
-    #Get quantiles for U bootstrap distribution
-    juvUquantiles<-adply(juvUdist, 2, function (x) quantile(x$juvUdist, c(0.025, 0.25, 0.5, 0.75, 0.975)))
-
-    juvUoutputsummary <- merge(juvUquantiles, juvUsum, by.x="X1")
-    juvUoutputsummary$X1 <- NULL #removed X1 variable
-    juvUoutputsummary$Parameter<-paste("Juvenile Utot") # add Parameter variable
-    juvUoutputsummary$Year<- selectyr #add year variable
+    juvUoutputsummary$parameter<-paste("Juv_U_",selectyr) # add Parameter variable
+    juvUoutputsummary$mig_year<- selectyr #add year variable
 
     ################## SMOLT ##########################
 
@@ -294,24 +332,26 @@ Multi_Year_Calendar <- function(data,
     smoltUdist<-as.data.frame(smoltUdist) #change output to dataframe
     smoltUdist$smoltUdist<-as.numeric(smoltUdist$smoltUdist) #change output to numeric
 
-    write.table(smoltUdist, file = paste(selectyr,"Smolt U distribution.txt"), sep="\t")
+    write.table(juvUdist, file = paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Calendar/",
+                                       selectyr,"_",species,"_",trap.name,"_Smolt_U_Dist.txt",sep = ""), sep="\t")
 
     #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
-    smoltUsum<-adply(smoltUdist, 2, summarise,
-                     mode=names(which.max(table(smoltUdist))),
-                     mean = mean(smoltUdist),sd = sd(smoltUdist),
-                     niaveSE = sd(smoltUdist)/sqrt(length(smoltUdist)))
-    smoltUsum$mode <- as.numeric(smoltUsum$mode)
+    smoltUoutputsummary <- smoltUdist %>%
+      summarise(
+        mode = as.numeric(names(which.max(table(smoltUdist)))),
+        mean = mean(smoltUdist),
+        sd = sd(smoltUdist),
+        naiveSE = sd / sqrt(n()),
+        quantile_2.5 = quantile(smoltUdist, probs = 0.025),
+        quantile_25 = quantile(smoltUdist, probs = 0.25),
+        quantile_50 = quantile(smoltUdist, probs = 0.5),
+        quantile_75 = quantile(smoltUdist, probs = 0.75),
+        quantile_97.5 = quantile(smoltUdist, probs = 0.975))
 
-    #Get quantiles for U bootstrap distribution
-    smoltUquantiles<-adply(smoltUdist, 2, function (x) quantile(x$smoltUdist, c(0.025, 0.25, 0.5, 0.75, 0.975)))
+    smoltUoutputsummary$parameter<-paste("Smolt_U_",selectyr) # add Parameter variable
+    smoltUoutputsummary$mig_year<- selectyr #add year variable
 
-    smoltUoutputsummary <- merge(smoltUquantiles, smoltUsum, by.x="X1")
-    smoltUoutputsummary$X1 <- NULL #removed X1 variable
-    smoltUoutputsummary$Parameter<-paste("Smolt Utot") # add Parameter variable
-    smoltUoutputsummary$Year<- selectyr #add year variable
-
-    #setup bootstrap to randomly draw samples from each distribution in order to obtain total U statistics
+    # setup bootstrap to randomly draw samples from each distribution in order to obtain total U statistics
     usepdt<-as.data.table(usep) # turn usep into a datable for bootstrap
 
     usepdt<-subset(usepdt, !(usepdt$strata %in% excl.strata$strata)) # exclude strata under the strata.op.min threshold
@@ -321,56 +361,66 @@ Multi_Year_Calendar <- function(data,
     {totUdist[i] <- sum(usepdt[, value[sample.int(.N, 1, TRUE)], by = strata]) - sum(unique(usepdt$strata))
     }
 
-    write.table(totUdist, file = paste(selectyr,"Total U distribution.txt"), sep="\t")
+    write.table(totUdist, file = paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Calendar/",
+                                       selectyr,"_",species,"_",trap.name,"_Total_U_Dist.txt",sep = ""), sep="\t")
 
     #Get summary statistics for U bootstrapped distribution
     totUdist<-as.data.frame(totUdist) #change output to dataframe
     totUdist$totUdist<-as.numeric(totUdist$totUdist) #change output to numeric
 
-    #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
-    totUsum<-adply(totUdist, 2, summarise,
-                   mode=names(which.max(table(totUdist))),
-                   mean = mean(totUdist),sd = sd(totUdist),
-                   niaveSE = sd(totUdist)/sqrt(length(totUdist)))
-    totUsum$mode <- as.numeric(totUsum$mode)
+    #Get summary statistics for U bootstrapped distribution
+    totUoutputsummary <- totUdist %>%
+      summarise(
+        mode = as.numeric(names(which.max(table(totUdist)))),
+        mean = mean(totUdist),
+        sd = sd(totUdist),
+        naiveSE = sd / sqrt(n()),
+        quantile_2.5 = quantile(totUdist, probs = 0.025),
+        quantile_25 = quantile(totUdist, probs = 0.25),
+        quantile_50 = quantile(totUdist, probs = 0.5),
+        quantile_75 = quantile(totUdist, probs = 0.75),
+        quantile_97.5 = quantile(totUdist, probs = 0.975))
 
-    #Get quantiles for U bootstrap distribution
-    totUquantiles<-adply(totUdist, 2, function (x) quantile(x$totUdist, c(0.025, 0.25, 0.5, 0.75, 0.975)))
+    totUoutputsummary$parameter<-paste("Total_U_",selectyr) # add Parameter variable
+    totUoutputsummary$mig_year<- selectyr #add year variable
 
-    #merge all summary statistics together
-    totUoutputsummary <- merge(totUquantiles, totUsum, by.x="X1")
-    totUoutputsummary$X1 <- NULL #removed X1 variable
-    totUoutputsummary$Parameter<-"Utot" # add Parameter variable
-    totUoutputsummary$Year<- selectyr #add year variable
-
-    year_int <- outputsummary[outputsummary$Year == selectyr ,]
+    year_int <- outputsummary[outputsummary$mig_year == selectyr ,]
     year_int <- year_int[complete.cases(year_int),]
-    year_int <- subset(year_int,grepl("^U", Parameter)) #subset all U's
+    year_int <- subset(year_int,grepl("^U", parameter)) #subset all U's
 
     cal.summary<-rbind.fill(totUoutputsummary, smoltUoutputsummary, juvUoutputsummary, year_int) #merge outputs
 
-    cal.summary <- cal.summary[,c(10:12,1:9)]
+    cal.summary <- cal.summary[,c(10:13,5:9,1:4)]
 
     juv1<- subset(usep, strata >= (smolt.strata+1))
     smolt1<- subset(usep, strata <= smolt.strata)
 
-    data_by_year <- outputsummary[outputsummary$Year == selectyr,]
+    data_by_year <- outputsummary[outputsummary$mig_year == selectyr,]
     u_by_year <- data_by_year %>%
-      filter(grepl("^U\\[\\d+,\\d+\\]$", Parameter))
+      filter(grepl("^U\\[\\d+,\\d+\\]$", parameter))
     p_by_year <- data_by_year %>%
-      filter(grepl("^p\\[\\d+,\\d+\\]$", Parameter))
+      filter(grepl("^p\\[\\d+,\\d+\\]$", parameter))
 
     cal.summary <- rbind(cal.summary, p_by_year)
 
+    options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink
+
+    cal.summary <- cal.summary %>%
+      left_join(data %>%
+                  select(-"strata_date") %>%
+                  rename("mig_year" ="year"), by = c("mig_year","strata"))
+
     #read out files
-    sink(paste(selectyr, species, trap.name, "Calendar Results.txt"), append=FALSE, split=FALSE)
+    sink(paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Calendar/",
+               selectyr,"_",species,"_",trap.name,"_Calendar_Results.txt",sep = ""), append=FALSE, split=FALSE)
+
     writeLines(paste( Sys.Date(),"\n",
                       "\n",
                       selectyr, species, trap.name,"\n",
                       "Boot strap iterations =", boot,"\n",
                       "Specified smolt date:", smolt.juv.date, "\n",
                       "\n",
-                      "Strata EXCLUDED from results due to <", strata.op.min, "year(s) of operation ","\n",
+                      "Strata EXCLUDED from results due to <", strata.op.min, "year(s) of operation (e.g. below defined minimum threshold) ","\n",
                       paste(x.strata, collapse=', '), "\n",
                       "\n"
     )
@@ -378,42 +428,47 @@ Multi_Year_Calendar <- function(data,
     print(cal.summary)
     sink()
 
-    write.csv(cal.summary, file = paste(selectyr, species, trap.name, "Calendar Results.csv"))
-
+    write.csv(cal.summary, file = paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Calendar/",
+                                        selectyr,"_",species,"_",trap.name,"_Calendar_Results.csv",sep = ""))
     ##### Figs
 
-    u_by_year$date <- format(as.Date(u_by_year$Strata*strata.length, origin = paste(u_by_year$Year, "-01-01", sep = "")), format = "%b %d %Y")
+    u_by_year$date <- format(as.Date(u_by_year$strata*strata.length, origin = paste(u_by_year$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
 
-    p1 <- ggplot(u_by_year, aes(x = reorder(date, Strata), y = `50%`)) +
-      geom_errorbar(aes(ymin = `2.5%`, ymax = `97.5%`), width = 0.1, col = "#56B4E9") +
+    p1 <- ggplot(u_by_year, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50)) +
+      geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, col = "#56B4E9") +
+      geom_line() +
+      geom_point() +
+      labs(y = "Abundance (U)", x = NULL, title = paste(selectyr,species,trap.name,"Calendar")) +
+      theme_minimal() +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Increase the font size for x-axis text
+        axis.text.y = element_text(size = 12),  # Increase the font size for y-axis text
+        axis.title = element_text(size = 14),  # Increase the font size for axis titles
+        plot.title = element_text(size = 16)  # Increase the font size for the plot title
+      )
+
+    p_by_year$date <- format(as.Date(p_by_year$strata*strata.length, origin = paste(p_by_year$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+
+    p2 <- ggplot(p_by_year, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50)) +
+      geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, col = "#E69F00") +
       geom_line() + geom_point() +
-      labs(y = "Estimated abundance (U)",
-           x = "Strata",
-           title = "Estimated abundance") + theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    p1
+      labs(y = "Capture probability (p)", x = "Strata") +
+      theme_minimal() +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Increase the font size for x-axis text
+        axis.text.y = element_text(size = 12),  # Increase the font size for y-axis text
+        axis.title = element_text(size = 14),  # Increase the font size for axis titles
+        plot.title = element_text(size = 16)  # Increase the font size for the plot title
+      )
 
-    p_by_year$date <- format(as.Date(p_by_year$Strata*strata.length, origin = paste(p_by_year$Year, "-01-01", sep = "")), format = "%b %d %Y")
-
-    p2 <- ggplot(p_by_year, aes(x = reorder(date, Strata), y = `50%`)) +
-      geom_errorbar(aes(ymin = `2.5%`, ymax = `97.5%`), width = 0.1, col = "#E69F00") +
-      geom_line() + geom_point() +
-      labs(y = "Estimated capture probability (p)",
-           x = "Strata") + theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    p2
-
-    ggsave(paste(selectyr, species, trap.name, "Calendar.png"), grid.arrange(p1, p2, ncol = 1))
+    ggsave(
+      filename = paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Calendar/",
+                       selectyr,"_",species,"_",trap.name,"_Calendar_Results.png",sep = ""),
+      plot = grid.arrange(p1, p2, ncol = 1),
+      width = 10,  # Adjust the width as needed
+      height = 6   # Adjust the height as needed
+    )
 
     options(scipen = 0)
   }
-  if(den.plot == TRUE) {
-    ggmcmc(model.fit.gg, file="U Density Plots.pdf", family="U",plot="density")
-  }
-  if(trace.plot == TRUE) {
-    ggmcmc(model.fit.gg, file="Trace Plot.pdf", plot="traceplot")
-  }
 }
-
-
-
