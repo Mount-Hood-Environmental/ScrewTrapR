@@ -1,6 +1,8 @@
 #' @title Penalized-spline time stratified Bayesian estimator (calendar summary)
 
 #' @description This function implements Bayesian methods to fit a Penalized-spline (p-spline) through U and a hierarchical structure for p between strata within a year.
+#' The p-spline model was developed by Bonner & Schwarz (2011) and the R script to implement the model utilizes the TimeStratPetersenDiagError_fit()function
+#' found in the BTSPAS packages.
 #' This function was intended to be used to summarize juvenile steelhead abundances by calendar year.
 #'
 #' @param data capture-mark-recapture data frame
@@ -29,6 +31,8 @@
 #' @import mcmcplots
 #' @import ggmcmc
 #' @import gridExtra
+#' @import BTSPAS
+
 #' @importFrom data.table as.data.table
 #' @export
 #' @return NULL

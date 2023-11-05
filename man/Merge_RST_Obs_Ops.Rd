@@ -13,6 +13,6 @@ Merge_RST_Obs_Ops(fish_observation, trap_operations)
 }
 \description{
 This function merges raw IDFG screw trap fish observation and trap operation data into one file that can then be used with the
-`Format_Chinook()` or `Format_Steelhead()` functions that can then be used to summarize the trap data into the capture-mark-recapture format
-needed for the bayesian models.
+`Format_Chinook()` or `Format_Steelhead()` functions which summarizes the trap data into the capture-mark-recapture format
+needed for the Bayesian models.
 }
