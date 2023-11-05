@@ -1,4 +1,42 @@
 
+#' @title Multi-year time stratified Bayesian estimator (brood summary including fry)
+
+#' @description This function implements a Bayesian model with a hierarchical structure for U and p by strata between years.
+#' This function was intended to be used to summarize juvenile Chinook Salmon abundances by brood year and provide estimates with and without fry.
+#' e.g. Summaries for brood year 2012 consist of fry(calendary year 2013), parr (calendar year 2013), presmolts (calendar year 2013), smolts (calendar year 2014).
+#'
+#'
+#' @param data capture-mark-recapture data frame
+#' @param burnin number of initial MCMC chain iterations to be discarded
+#' @param chains number of MCMC chains (>1)
+#' @param iterations number of MCMC iterations per chain
+#' @param thin thin rate for MCMC chains
+#' @param sel.years selected year(s) to compute abundance estimates
+#' @param boot number of boot strap iterations to calculate yearly and life stage abundance estimates
+#' @param species character string used for titles and descriptions of reports
+#' @param model.params parameters to be returned from MCMC simulation
+#' @param trap.name character string used for  titles and descriptions of reports
+#' @param effort.cor expands the number of unmarked fish captured by a sampling effort
+#' @param strata.length number of days in strata
+#' @param smolt.parr.date "MM-DD" date to partition smolt life stage
+#' @param parr.presmolt.date "MM-DD" date to partition parr life stage
+#' @param strata.op.min minimum number of years data need to have been collected in a stratum to be included in summary
+#' @param den.plot return density plots of MCMC chains
+#' @param trace.plot return trace plots of MCMC chains
+#' @import tidyverse
+#' @import lubridate
+#' @import R2jags
+#' @import coda
+#' @import lattice
+#' @import superdiag
+#' @import mcmcplots
+#' @import ggmcmc
+#' @import gridExtra
+#' @importFrom data.table as.data.table
+#' @export
+#' @return NULL
+#'
+#'
 Multi_Year_Brood_Fry <- function(data,
                                  effort.cor = FALSE,
                                  sel.years = currentyear,

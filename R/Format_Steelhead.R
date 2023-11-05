@@ -1,8 +1,24 @@
-# Authors:  Bryce Oldemeyer
-# Purpose:  Format the merged RST observation and operations into Capture-Mark-Recapture
-# data needed for hierarchical Bayesian models. Steelhead data.
-# Created:  10/19/2023
-# Last Modified: 10/19/2023
+#' @title Format Chinook Salmon screw trap data into capture-mark-recapture data needed for Bayesian models
+#'
+#' @description This function reconfigures Chinook Salmon screw trap data into the appropriate capture-mark-recapture format needed for the hierarchical Bayesian models.
+#'
+#' Steelhead  "TU" dispositioned fish are marked individuals released upstream (n) of the rotary screw trap (RST) on a the prior date. "RE RC" dispositioned Steelhead are recaptured individuals (m) at the RST on a given date.
+#' The sum of "TU", "TD", "NTT", "NTD", and "NTR" dispositioned fish are captured unmarked individuals (u) at the RST on a given date.
+#'
+#' Individuals smaller than the fork length cut-off (flength.cut) are excluded from the formatting. Precocial Steelhead, designated with precocial disposition, are excluded from the formatting.
+#'
+#' Years are standardized in that each year begins at the earliest trapping date and ends at the latest trapping date the RST was ever in operation since RST installation.
+#'
+#' @param RST_ops_obs_data merged trap operation and observation data for a single species
+#' @param strata length of desired strata in days (e.g. 1 week -> 7 days)
+#' @param species character string needed to subset data (should be identical to the species name in the RST_ops_obs_data set)
+#' @param trap.name character string used for titles and descriptions of reports
+#' @param smolt.date "MM-DD" smolt classification date needed for formatting
+#' @param flength.cut lower fork length cut off for steelhead to be included in the analysis
+#'
+#' @import tidyverse
+#' @export
+#' @return NULL
 
 Format_Steelhead <- function(RST_ops_obs_data,
                              strata = 7,

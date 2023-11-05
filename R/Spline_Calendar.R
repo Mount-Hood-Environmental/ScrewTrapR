@@ -1,4 +1,39 @@
+#' @title Penalized-spline time stratified Bayesian estimator (calendar summary)
 
+#' @description This function implements Bayesian methods to fit a Penalized-spline (p-spline) through U and a hierarchical structure for p between strata within a year.
+#' This function was intended to be used to summarize juvenile steelhead abundances by calendar year.
+#'
+#' @param data capture-mark-recapture data frame
+#' @param burnin number of initial MCMC chain iterations to be discarded
+#' @param chains number of MCMC chains (>1)
+#' @param iterations number of MCMC iterations per chain
+#' @param thin thin rate for MCMC chains
+#' @param sel.years selected year(s) to compute abundance estimates
+#' @param boot number of boot strap iterations to calculate yearly and life stage abundance estimates
+#' @param species character string used for titles and descriptions of reports
+#' @param model.params parameters to be returned from MCMC simulation
+#' @param trap.name character string used for titles and descriptions of reports
+#' @param effort.cor expands the number of unmarked fish captured by a sampling effort
+#' @param strata.length number of days in strata
+#' @param smolt.juv.date "MM-DD" date to partition smolt life stage
+#' @param strata.op.min minimum number of years data need to have been collected in a stratum to be included in summary
+#' @param den.plot return density plots of MCMC chains
+#' @param trace.plot return trace plots of MCMC chains
+#'
+#' @import tidyverse
+#' @import lubridate
+#' @import R2jags
+#' @import coda
+#' @import lattice
+#' @import superdiag
+#' @import mcmcplots
+#' @import ggmcmc
+#' @import gridExtra
+#' @importFrom data.table as.data.table
+#' @export
+#' @return NULL
+#'
+#'
 Spline_Calendar <- function(data,
                             effort.cor = FALSE,
                             sel.years = currentyear,

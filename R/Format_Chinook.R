@@ -1,9 +1,23 @@
-# Authors:  Bryce Oldemeyer
-# Purpose:  Format the merged RST observation and operations into Capture-Mark-Recapture
-# data needed for hierarchical Bayesian models. Chinook salmon data.
-# Created:  10/19/2023
-# Last Modified: 10/19/2023
-# Published here:
+#' @title Format Chinook Salmon screw trap data into capture-mark-recapture data needed for Bayesian models
+#'
+#' @description This function reconfigures Chinook Salmon screw trap data into the appropriate capture-mark-recapture format needed for the hierarchical Bayesian models.
+#'
+#' Chinook "TU" dispositioned fish are marked individuals released upstream (n) of the screw trap on for the prior day. "RE RC" dispositioned Chinook are recaptured individuals (m) at the RST on a given date.
+#' The sum of "TU", "TD", "NTT", "NTD", "NTR" & "NTS" dispositioned fish are captured unmarked individuals (u) at the RST on a given date.
+#'
+#' Fry and NTS disposition individuals captured between the earliest trapping date to the specified smolt cut-off are broken into "YOYnraw", "YOYm", and "YOYu". Precocial Chinook, designated with precocial disposition, are excluded from the formatting. Yearling fish migrating after the specified smolt date are excluded from the formatting.
+#'
+#' Years are standardized in that each year begins at the earliest trapping date and ends at the latest trapping date the RST was ever in operation since RST installation.
+#'
+#' @param RST_ops_obs_data merged trap operation and observation data for a single species
+#' @param strata length of desired strata in days (e.g. 1 week -> 7 days)
+#' @param species character string needed to subset data (should be identical to the species name in the RST_ops_obs_data set)
+#' @param trap.name character string used for titles and descriptions of reports
+#' @param smolt.date "MM-DD" smolt classification date needed for formatting
+#'
+#' @import tidyverse
+#' @export
+#' @return NULL
 
 Format_Chinook <- function(RST_ops_obs_data,
                            strata = 7,

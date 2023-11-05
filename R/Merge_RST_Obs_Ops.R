@@ -1,8 +1,15 @@
-# Authors:  Bryce Oldemeyer
-# Purpose:  Merge RST fish observation and trap operations data from IDFG databases. Same function as in ScrewTrapR package.
-# Created:  10/19/2023
-# Last Modified: 10/19/2023
-# Published here:
+#' @title Merge screw trap fish observation and trap operation data
+#'
+#' @description This function merges raw IDFG screw trap fish observation and trap operation data into one file that can then be used with the
+#' `Format_Chinook()` or `Format_Steelhead()` functions that can then be used to summarize the trap data into the capture-mark-recapture format
+#' needed for the bayesian models.
+#' @param fish_observation trap fish observation data. Needs to include columns "FishDate","Acronym","NumberOfFish", & "ForkLength"
+#' @param trap_operations trap operation data. Needs to include columns "StartDate" and "Operation"
+#
+#'
+#' @import tidyverse
+#' @export
+#' @return NULL
 
 Merge_RST_Obs_Ops <- function(fish_observation,
                               trap_operations) {
