@@ -43,7 +43,7 @@ Multi_Year_Brood(
 
 \item{den.plot}{return density plots of MCMC chains}
 
-\item{trace.plot}{return trace plots of MCMC chains}
+\item{trace.plot}{return trace plots of MCMC chains#'}
 
 \item{strata.length}{number of days in strata}
 

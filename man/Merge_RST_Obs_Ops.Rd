@@ -7,7 +7,7 @@
 Merge_RST_Obs_Ops(fish_observation, trap_operations)
 }
 \arguments{
-\item{fish_observation}{trap fish observation data. Needs to include columns "FishDate","Acronym","NumberOfFish", & "ForkLength"}
+\item{fish_observation}{trap fish observation data. Needs to include columns "FishDate","Acronym","NumberOfFish", "BroodYear", & "ForkLength"}
 
 \item{trap_operations}{trap operation data. Needs to include columns "StartDate" and "Operation"}
 }
