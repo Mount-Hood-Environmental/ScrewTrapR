@@ -22,8 +22,8 @@
 #' @param parr.presmolt.date "MM-DD" date to partition parr life stage
 #' @param strata.op.min minimum number of years data need to have been collected in a stratum to be included in summary
 #' @param den.plot return density plots of MCMC chains
-#' @param trace.plot return trace plots of MCMC chains
-#'
+#' @param trace.plot return trace plots of MCMC chains#'
+#' @import plyr
 #' @import tidyverse
 #' @import lubridate
 #' @import R2jags
