@@ -131,7 +131,7 @@ Multi_Year_Calendar <- function(data,
 
   options(scipen = 999) #change scientific notation
 
-  main_folder <- paste(species,"_",trap.name,"_",format(Sys.Date(), "%Y_%m_%d"),sep = "")
+  main_folder <- paste(species,"_",trap.name,"_MYC_",format(Sys.Date(), "%Y_%m_%d"),sep = "")
   dir.create(main_folder)
   dir.create(paste(main_folder,"/Inputs",sep = ""))
   dir.create(paste(main_folder,"/MCMC_Chains",sep = ""))

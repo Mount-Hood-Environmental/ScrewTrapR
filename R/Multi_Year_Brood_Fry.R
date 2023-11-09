@@ -212,7 +212,7 @@ Multi_Year_Brood_Fry <- function(data,
   # Create folder structures #
   ############################
 
-  main_folder <- paste(species,"_",trap.name,"_",format(Sys.Date(), "%Y_%m_%d"),sep = "")
+  main_folder <- paste(species,"_",trap.name,"_MYBF_",format(Sys.Date(), "%Y_%m_%d"),sep = "")
   dir.create(main_folder)
   dir.create(paste(main_folder,"/Inputs",sep = ""))
   dir.create(paste(main_folder,"/MCMC_Chains",sep = ""))

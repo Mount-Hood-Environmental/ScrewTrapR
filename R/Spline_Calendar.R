@@ -72,7 +72,7 @@ Spline_Calendar <- function(data,
   data$strata_date<-format(as.Date(data$strata*strata.length,
                                    origin = paste(data$year, "-01-01", sep = "")))
 
-  main_folder <- paste(species,"_",trap.name,"_",format(Sys.Date(), "%Y_%m_%d"),sep = "")
+  main_folder <- paste(species,"_",trap.name,"_SC_",format(Sys.Date(), "%Y_%m_%d"),sep = "")
   dir.create(main_folder)
 
   selectyr = 2017
