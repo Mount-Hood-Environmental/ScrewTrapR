@@ -19,8 +19,8 @@ strata.op.min = 1
 smolt.juv.date = "06-01"
 species = "STHD"
 trap.name = "Calendar_Test"
-den.plot = TRUE
-trace.plot = TRUE
+den.plot = FALSE
+trace.plot = FALSE
 strata.length = 10
 burnin = 2000
 chains = 3
@@ -228,13 +228,13 @@ Multi_Year_Calendar <- function(data,
   #####################
 
   # summary statistic by parameter for all chains & iterations
-  outputsummary <- model.fit.gg %>%
+  outputsummary1 <- model.fit.gg %>%
     group_by(Parameter) %>%
     summarise(
       mode = as.numeric(names(which.max(table(value)))),
       mean = mean(value),
       sd = sd(value),
-      naiveSE = sd / sqrt(n()),
+      naiveSE = sd / sqrt(length(value)),
       quantile_2.5 = quantile(value, probs = 0.025),
       quantile_25 = quantile(value, probs = 0.25),
       quantile_50 = quantile(value, probs = 0.5),
@@ -336,7 +336,7 @@ Multi_Year_Calendar <- function(data,
         mode = as.numeric(names(which.max(table(juvUdist)))),
         mean = mean(juvUdist),
         sd = sd(juvUdist),
-        naiveSE = sd / sqrt(n()),
+        naiveSE = sd / sqrt(length(value)),
         quantile_2.5 = quantile(juvUdist, probs = 0.025),
         quantile_25 = quantile(juvUdist, probs = 0.25),
         quantile_50 = quantile(juvUdist, probs = 0.5),
@@ -371,7 +371,7 @@ Multi_Year_Calendar <- function(data,
         mode = as.numeric(names(which.max(table(smoltUdist)))),
         mean = mean(smoltUdist),
         sd = sd(smoltUdist),
-        naiveSE = sd / sqrt(n()),
+        naiveSE = sd / sqrt(length(value)),
         quantile_2.5 = quantile(smoltUdist, probs = 0.025),
         quantile_25 = quantile(smoltUdist, probs = 0.25),
         quantile_50 = quantile(smoltUdist, probs = 0.5),
@@ -404,7 +404,7 @@ Multi_Year_Calendar <- function(data,
       mode = as.numeric(names(which.max(table(totUdist)))),
       mean = mean(totUdist),
       sd = sd(totUdist),
-      naiveSE = sd / sqrt(n()),
+      naiveSE = sd / sqrt(length(value)),
       quantile_2.5 = quantile(totUdist, probs = 0.025),
       quantile_25 = quantile(totUdist, probs = 0.25),
       quantile_50 = quantile(totUdist, probs = 0.5),
