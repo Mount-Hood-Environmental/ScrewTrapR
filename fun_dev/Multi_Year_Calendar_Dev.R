@@ -14,7 +14,7 @@ library(here)
 data <- read.csv(here("data/example_export/Example_data.csv"))
 
 effort.cor = FALSE
-sel.years = c(2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 )
+sel.years = c(2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022)
 strata.op.min = 1
 smolt.juv.date = "06-01"
 species = "STHD"

@@ -24,7 +24,6 @@
 #' @param den.plot return density plots of MCMC chains
 #' @param trace.plot return trace plots of MCMC chains
 #' @import plyr
-#' @import tidyverse
 #' @import lubridate
 #' @import R2jags
 #' @import coda
