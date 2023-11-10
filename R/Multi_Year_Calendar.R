@@ -259,7 +259,7 @@ Multi_Year_Calendar <- function(data,
 
   # clean up summary stats
   outputsummary <- outputsummary %>%
-    rename("parameter" = "Parameter",
+    dplyr::rename("parameter" = "Parameter",
            "mig_year"="year") %>%
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
@@ -442,7 +442,7 @@ Multi_Year_Calendar <- function(data,
     cal.summary <- cal.summary %>%
       left_join(data %>%
                   select(-"strata_date") %>%
-                  rename("mig_year" ="year"), by = c("mig_year","strata"))
+                  dplyr::rename("mig_year" ="year"), by = c("mig_year","strata"))
 
     #read out files
     sink(paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Calendar/",

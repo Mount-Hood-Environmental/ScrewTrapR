@@ -230,7 +230,7 @@ Multi_Year_Calendar <- function(data,
   # summary statistic by parameter for all chains & iterations
   outputsummary1 <- model.fit.gg %>%
     group_by(Parameter) %>%
-    summarise(
+    dplyr::summarise(
       mode = as.numeric(names(which.max(table(value)))),
       mean = mean(value),
       sd = sd(value),
