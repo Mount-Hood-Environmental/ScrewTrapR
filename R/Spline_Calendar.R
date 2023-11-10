@@ -244,7 +244,7 @@ Spline_Calendar <- function(data,
     #Get summary statistics for U bootstrapped distribution
     outputsummary <- model.fit.gg.renamed %>%
       group_by(Parameter) %>%
-      summarise(
+      dplyr::summarise(
         mode = as.numeric(names(which.max(table(value)))),
         mean = mean(value),
         sd = sd(value),
@@ -266,7 +266,7 @@ Spline_Calendar <- function(data,
 
     # clean up summary stats
     outputsummary <- outputsummary %>%
-      rename("parameter" = "Parameter") %>%
+      dplyr::rename("parameter" = "Parameter") %>%
       mutate(across(where(is.numeric), ~ round(., 3))) %>%
       arrange(mig_year, parameter)
 
@@ -301,7 +301,7 @@ Spline_Calendar <- function(data,
 
     #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
     juvUoutputsummary <- juvUdist %>%
-      summarise(
+      dplyr::summarise(
         mode = as.numeric(names(which.max(table(juvUdist)))),
         mean = mean(juvUdist),
         sd = sd(juvUdist),
@@ -334,7 +334,7 @@ Spline_Calendar <- function(data,
 
     #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
     smoltUoutputsummary <- smoltUdist %>%
-      summarise(
+      dplyr::summarise(
         mode = as.numeric(names(which.max(table(smoltUdist)))),
         mean = mean(smoltUdist),
         sd = sd(smoltUdist),
@@ -365,7 +365,7 @@ Spline_Calendar <- function(data,
 
     #Get summary statistics for U bootstrapped distribution
     totUoutputsummary <- totUdist %>%
-      summarise(
+      dplyr::summarise(
         mode = as.numeric(names(which.max(table(totUdist)))),
         mean = mean(totUdist),
         sd = sd(totUdist),
@@ -386,7 +386,7 @@ Spline_Calendar <- function(data,
     cal.summary <- cal.summary %>%
       left_join(year_data %>%
                   select(-c("strata_date")) %>%
-                  rename("mig_year" ="year"), by = c("mig_year","strata"))
+                  dplyr::rename("mig_year" ="year"), by = c("mig_year","strata"))
 
     options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink
 

@@ -315,7 +315,7 @@ Multi_Year_Brood_Fry <- function(data,
   # summary statistic by parameter for all chains & iterations
   outputsummary <- model.fit.gg %>%
     group_by(Parameter) %>%
-    summarise(
+    dplyr::summarize(
       mode = as.numeric(names(which.max(table(value)))),
       mean = mean(value),
       sd = sd(value),
@@ -340,7 +340,7 @@ Multi_Year_Brood_Fry <- function(data,
 
   # clean up summary stats
   outputsummary <- outputsummary %>%
-    rename("parameter" = "Parameter",
+    dplyr::rename("parameter" = "Parameter",
            "mig_year"="year") %>%
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
@@ -443,7 +443,7 @@ Multi_Year_Brood_Fry <- function(data,
   # summary statistic by parameter for all chains & iterations
   outputsummary.fry <- model.fit.gg.fry %>%
     group_by(Parameter) %>%
-    summarise(
+    dplyr::summarize(
       mode = as.numeric(names(which.max(table(value)))),
       mean = mean(value),
       sd = sd(value),
@@ -468,7 +468,7 @@ Multi_Year_Brood_Fry <- function(data,
 
   # clean up summary stats
   outputsummary.fry <- outputsummary.fry %>%
-    rename("parameter" = "Parameter",
+    dplyr::rename("parameter" = "Parameter",
            "mig_year"="year") %>%
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
@@ -550,7 +550,7 @@ Multi_Year_Brood_Fry <- function(data,
                                           selectyr,"_",species,"_",trap.name,"_Parr_U_Dist.txt",sep = ""), sep="\t")
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       parrUoutputsummary <- parrUdist %>%
-        summarise(
+        dplyr::summarize(
           mode = as.numeric(names(which.max(table(parrUdist)))),
           mean = mean(parrUdist),
           sd = sd(parrUdist),
@@ -585,7 +585,7 @@ Multi_Year_Brood_Fry <- function(data,
 
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       presmoltUoutputsummary <- presmoltUdist %>%
-        summarise(
+        dplyr::summarize(
           mode = as.numeric(names(which.max(table(presmoltUdist)))),
           mean = mean(presmoltUdist),
           sd = sd(presmoltUdist),
@@ -630,7 +630,7 @@ Multi_Year_Brood_Fry <- function(data,
 
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       smoltUoutputsummary <- smoltUdist %>%
-        summarise(
+        dplyr::summarize(
           mode = as.numeric(names(which.max(table(smoltUdist)))),
           mean = mean(smoltUdist),
           sd = sd(smoltUdist),
@@ -674,7 +674,7 @@ Multi_Year_Brood_Fry <- function(data,
                                            selectyr,"_",species,"_",trap.name,"_Fry_U_Dist.txt",sep = ""), sep="\t")
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       fryUoutputsummary <- fryUdist %>%
-        summarise(
+        dplyr::summarize(
           mode = as.numeric(names(which.max(table(fryUdist)))),
           mean = mean(fryUdist),
           sd = sd(fryUdist),
@@ -760,7 +760,7 @@ Multi_Year_Brood_Fry <- function(data,
 
     #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
     totUoutputsummary <- totUdist %>%
-      summarise(
+      dplyr::summarize(
         mode = as.numeric(names(which.max(table(totUdist)))),
         mean = mean(totUdist),
         sd = sd(totUdist),
@@ -783,7 +783,7 @@ Multi_Year_Brood_Fry <- function(data,
 
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       totUoutputsummaryfry <- totUdistfry %>%
-        summarise(
+        dplyr::summarize(
           mode = as.numeric(names(which.max(table(totUdistfry)))),
           mean = mean(totUdistfry),
           sd = sd(totUdistfry),
@@ -823,7 +823,7 @@ Multi_Year_Brood_Fry <- function(data,
 
     boutputsummary <- brood.strata %>%
       group_by(Parameter) %>%
-      summarise(
+      dplyr::summarize(
         mode = as.numeric(names(which.max(table(value)))),
         mean = mean(value),
         sd = sd(value),
@@ -847,7 +847,7 @@ Multi_Year_Brood_Fry <- function(data,
 
     # clean up summary stats
     boutputsummary <- boutputsummary %>%
-      rename("parameter" = "Parameter",
+      dplyr::rename("parameter" = "Parameter",
              "mig_year" = "year") %>%
       mutate(across(where(is.numeric), ~ round(., 3))) %>%
       arrange(mig_year, parameter)
@@ -860,7 +860,7 @@ Multi_Year_Brood_Fry <- function(data,
 
       foutputsummary <- fry1 %>%
         group_by(Parameter) %>%
-        summarise(
+        dplyr::summarize(
           mode = as.numeric(names(which.max(table(value)))),
           mean = mean(value),
           sd = sd(value),
@@ -884,7 +884,7 @@ Multi_Year_Brood_Fry <- function(data,
 
       # clean up summary stats
       foutputsummary <- foutputsummary %>%
-        rename("parameter" = "Parameter",
+        dplyr::rename("parameter" = "Parameter",
                "mig_year" = "year") %>%
         mutate(across(where(is.numeric), ~ round(., 3))) %>%
         arrange(mig_year, parameter) %>%
@@ -983,7 +983,7 @@ Multi_Year_Brood_Fry <- function(data,
     broodsummary <- broodsummary %>%
       left_join(data %>%
                   select(-"strata_date") %>%
-                  rename("mig_year" ="year"), by = c("mig_year","strata"))
+                  dplyr::rename("mig_year" ="year"), by = c("mig_year","strata"))
 
     #read out files
     sink(paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Brood/",

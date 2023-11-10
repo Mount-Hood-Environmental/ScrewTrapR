@@ -248,7 +248,7 @@ Multi_Year_Brood <- function(data,
   # summary statistic by parameter for all chains & iterations
   outputsummary <- model.fit.gg %>%
     group_by(Parameter) %>%
-    summarise(
+    dplyr::summarise(
       mode = as.numeric(names(which.max(table(value)))),
       mean = mean(value),
       sd = sd(value),
@@ -273,7 +273,7 @@ Multi_Year_Brood <- function(data,
 
   # clean up summary stats
   outputsummary <- outputsummary %>%
-    rename("parameter" = "Parameter",
+    dplyr::rename("parameter" = "Parameter",
            "mig_year"="year") %>%
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
@@ -352,7 +352,7 @@ Multi_Year_Brood <- function(data,
 
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       parrUoutputsummary <- parrUdist %>%
-        summarise(
+        dplyr::summarise(
           mode = as.numeric(names(which.max(table(parrUdist)))),
           mean = mean(parrUdist),
           sd = sd(parrUdist),
@@ -387,7 +387,7 @@ Multi_Year_Brood <- function(data,
 
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       presmoltUoutputsummary <- presmoltUdist %>%
-        summarise(
+        dplyr::summarise(
           mode = as.numeric(names(which.max(table(presmoltUdist)))),
           mean = mean(presmoltUdist),
           sd = sd(presmoltUdist),
@@ -432,7 +432,7 @@ Multi_Year_Brood <- function(data,
 
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       smoltUoutputsummary <- smoltUdist %>%
-        summarise(
+        dplyr::summarise(
           mode = as.numeric(names(which.max(table(smoltUdist)))),
           mean = mean(smoltUdist),
           sd = sd(smoltUdist),
@@ -493,7 +493,7 @@ Multi_Year_Brood <- function(data,
     totUdist$totUdist<-as.numeric(totUdist$totUdist) #change output to numeric
 
     totUoutputsummary <- totUdist %>%
-      summarise(
+      dplyr::summarise(
         mode = as.numeric(names(which.max(table(totUdist)))),
         mean = mean(totUdist),
         sd = sd(totUdist),
@@ -526,7 +526,7 @@ Multi_Year_Brood <- function(data,
 
     boutputsummary <- brood.strata %>%
       group_by(Parameter) %>%
-      summarise(
+      dplyr::summarise(
         mode = as.numeric(names(which.max(table(value)))),
         mean = mean(value),
         sd = sd(value),
@@ -550,7 +550,7 @@ Multi_Year_Brood <- function(data,
 
     # clean up summary stats
     boutputsummary <- boutputsummary %>%
-      rename("parameter" = "Parameter",
+      dplyr::rename("parameter" = "Parameter",
              "mig_year" = "year") %>%
       mutate(across(where(is.numeric), ~ round(., 3))) %>%
       arrange(mig_year, parameter)
@@ -596,7 +596,7 @@ Multi_Year_Brood <- function(data,
     broodsummary <- broodsummary %>%
       left_join(data %>%
                   select(-"strata_date") %>%
-                  rename("mig_year" ="year"), by = c("mig_year","strata"))
+                  dplyr::rename("mig_year" ="year"), by = c("mig_year","strata"))
 
     #read out files
     options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink
