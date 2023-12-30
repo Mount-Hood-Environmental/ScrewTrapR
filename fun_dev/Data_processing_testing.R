@@ -142,19 +142,22 @@ Format_Chinook <- function(RST_ops_obs_data,
   #        Calendar fill, days, and effort      #
   ###############################################
 
-  # merge with calendar with trap data
-  trap_date_filled = merge(trap_merge, dates, by="date", all=TRUE)
-
+  # merge with calendar with trap data & remove Feb. 29 during leap years for consistency.
+  trap_date_filled = merge(trap_merge, dates, by="date", all=TRUE) %>%
+    filter(!(month(date) == 2 & day(date) == 29 & leap_year(year(date))))
 
   ###############################################
   #    Adding Julian Date & Year Variables      #
   ###############################################
 
   trap_date_filled$julian = yday(trap_date_filled$date)
+
+  trap_date_filled = trap_date_filled %>%
+    mutate(julian = ifelse(leap_year(year(date)) & month(date) > 2 & month(date) <= 12, julian - 1, julian))
+
   trap_date_filled$year = format(trap_date_filled$date, "%Y")
 
-  trap_full <-trap_date_filled
-
+  trap_full = trap_date_filled
 
   #########################################
   #                YOY                    #
@@ -186,7 +189,8 @@ Format_Chinook <- function(RST_ops_obs_data,
 
   trap_merge_yoy$date <- as.Date(trap_merge_yoy$date, format = "%m/%d/%Y")
 
-  trap_date_yoy_filled = merge(trap_merge_yoy, dates, by="date", all=TRUE)
+  trap_date_yoy_filled = merge(trap_merge_yoy, dates, by="date", all=TRUE) %>%
+    filter(!(month(date) == 2 & day(date) == 29 & leap_year(year(date))))
 
   # ------------------------------------
 
@@ -206,7 +210,29 @@ Format_Chinook <- function(RST_ops_obs_data,
   #              Stratifying              #
   #########################################
 
-  trap_full$strata=cut(trap_full$julian, seq(0, max(trap_full$julian, na.rm = TRUE)+strata, by=strata), labels=FALSE)
+  trap_smolt = trap_full %>%
+    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    filter(monthDay < smolt.date)
+
+  # Below, the code makes it so strata are grouped by days starting from the identified Smolt date and working backwards. This makes it so summaries
+  # for the smolt life-stage end at the defined date
+
+  trap_smolt$strata=cut(rev(trap_smolt$julian), seq(0, max(trap_smolt$julian, na.rm = TRUE)+strata, by=strata),
+                        labels=seq(ceiling(max(trap_smolt$julian, na.rm = TRUE)/strata),1))
+
+  trap_parr_pre = trap_full %>%
+    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    filter(monthDay >= smolt.date)
+
+  trap_parr_pre$strata=cut(trap_parr_pre$julian, seq(min(trap_parr_pre$julian, na.rm = TRUE), max(trap_parr_pre$julian, na.rm = TRUE), by=strata),
+                        labels=seq(ceiling((min(trap_parr_pre$julian, na.rm = TRUE)/strata)+1), ceiling(max(trap_parr_pre$julian, na.rm = TRUE)/strata)))
+
+  ##########################
+  ################
+  # ++++++++++++++++   START HERE MONDAY and MERGE
+  #___________________
+  #____________________
+
 
   # -------------------------------------------
 
@@ -378,17 +404,22 @@ Format_Steelhead <- function(RST_ops_obs_data,
   #        Calendar fill, days, and effort      #
   ###############################################
 
-  # merge with calendar with trap data
-  trap_date_filled = merge(trap_merge, dates, by="date", all=TRUE)
+  # merge with calendar with trap data & remove Feb. 29 during leap years for consistency.
+  trap_date_filled = merge(trap_merge, dates, by="date", all=TRUE) %>%
+    filter(!(month(date) == 2 & day(date) == 29 & leap_year(year(date))))
 
   ###############################################
   #    Adding Julian Date & Year Variables      #
   ###############################################
 
   trap_date_filled$julian = yday(trap_date_filled$date)
+
+  trap_date_filled = trap_date_filled %>%
+    mutate(julian = ifelse(leap_year(year(date)) & month(date) > 2 & month(date) <= 12, julian - 1, julian))
+
   trap_date_filled$year = format(trap_date_filled$date, "%Y")
 
-  trap_full <-trap_date_filled
+  trap_full = trap_date_filled
 
   trap_full <- merge(trap_full, day.effort, by="date", all=TRUE)
 
