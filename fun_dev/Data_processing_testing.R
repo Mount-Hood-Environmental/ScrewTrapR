@@ -218,61 +218,50 @@ Format_Chinook <- function(RST_ops_obs_data,
   # for the smolt life-stage end at the defined date
 
   trap_smolt$strata=cut(rev(trap_smolt$julian), seq(0, max(trap_smolt$julian, na.rm = TRUE)+strata, by=strata),
-                        labels=seq(ceiling(max(trap_smolt$julian, na.rm = TRUE)/strata),1))
+                        labels=seq(ceiling(max(trap_smolt$julian, na.rm = TRUE)/strata),1), right = TRUE)
 
   trap_parr_pre = trap_full %>%
     mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
     filter(monthDay >= smolt.date)
 
   trap_parr_pre$strata=cut(trap_parr_pre$julian, seq(min(trap_parr_pre$julian, na.rm = TRUE), max(trap_parr_pre$julian, na.rm = TRUE), by=strata),
-                        labels=seq(ceiling((min(trap_parr_pre$julian, na.rm = TRUE)/strata)+1), ceiling(max(trap_parr_pre$julian, na.rm = TRUE)/strata)))
+                        labels=seq(ceiling((min(trap_parr_pre$julian, na.rm = TRUE)/strata)+1), ceiling(max(trap_parr_pre$julian, na.rm = TRUE)/strata)-1), right = FALSE)
 
-  ##########################
-  ################
-  # ++++++++++++++++   START HERE MONDAY and MERGE
-  #___________________
-  #____________________
-
+  trap_strata_daily = trap_smolt %>%
+    bind_rows(trap_parr_pre) %>%
+    arrange(.,date) %>%
+    group_by(strata) %>%
+    mutate(strata_start = min(monthDay),
+           strata_end = max(monthDay),
+           strata = as.numeric(as.character(strata)))
 
   # -------------------------------------------
 
-  trap_week <- trap_full %>%
+  trap_strata <- trap_strata_daily %>%
     group_by(year, strata) %>%
-    summarise_at(vars(m, n, u, yoym, yoyn, yoyu, days, effort), sum, na.rm = TRUE)
+    summarise_at(vars(m, n, u, yoym, yoyn, yoyu, days, effort), sum, na.rm = TRUE) %>%
+    mutate(year = as.numeric(as.character(year)),
+           strata = as.numeric(as.character(strata)))
 
-  # -------------------------------------------
-
-
-  #Find the first and last Jweek the trap has operated through
-  #jweek
-
-  # -------------------------------------------
-
-  weeks <- trap_week %>%
+  # Find the first and last strata the trap operated
+  strata_summary <- trap_strata %>%
     group_by(strata) %>%
     summarise(freq = sum(effort))
 
-  # -------------------------------------------
+  trap_season=strata_summary[strata_summary$freq > 0 ,]
+  trap_start= min(trap_season$strata, na.rm=TRUE)
+  trap_finish=max(trap_season$strata, na.rm=TRUE)
 
-  trap_season=weeks[weeks$freq > 0 ,]
-  trap_start=as.numeric(min(trap_season$strata, na.rm=TRUE))
-  trap_finish=as.numeric(max(trap_season$strata, na.rm=TRUE))
-
-  #Find the first year the trap was in operation
-
-  # -------------------------------------------
-
-  years <- trap_week %>%
+  # Find the first year the trap was in operation
+  years <- trap_strata %>%
     group_by(year) %>%
     summarise(freq = sum(effort))
 
-  # -------------------------------------------
-
   trap_year=years[years$freq > 0 ,]
-  trap_start_year=as.numeric(min(trap_year$year, na.rm=TRUE))
+  trap_start_year=min(trap_year$year, na.rm=TRUE)
 
-  #Chop trap data to only the 1st year of operation, first ordinal week, and last ordinal week
-  trap_complete=trap_week[trap_week$strata >= trap_start , ]
+  # trim trap data from the first year of operation, first strata, and last strata
+  trap_complete=trap_strata[trap_strata$strata >= trap_start ,]
   trap_complete=trap_complete[trap_complete$strata <= trap_finish ,]
   trap_complete=trap_complete[trap_complete$year >= trap_start_year ,]
 
@@ -283,6 +272,13 @@ Format_Chinook <- function(RST_ops_obs_data,
 
   trap_complete = trap_complete %>%
     filter_all(any_vars(!is.na(.)))
+
+  final = trap_complete %>%
+    left_join(trap_strata_daily %>%
+                select(strata,strata_start,strata_end) %>%
+                distinct(),
+              by = join_by(strata)) %>%
+    arrange(., by = year, strata)
 
   today <- Sys.Date()
 
