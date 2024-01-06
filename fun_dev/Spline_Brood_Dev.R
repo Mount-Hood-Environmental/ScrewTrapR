@@ -12,10 +12,10 @@ library(data.table)
 library(gridExtra)
 library(here)
 
-data <- read.csv(here("data/example_export/Example_data.csv"))
+data <- read.csv(here("data/example_export/Example_data_new.csv"))
 
 effort.cor = FALSE
-sel.years = c( 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 )
+sel.years = c( 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 )
 strata.op.min = 1
 smolt.parr.date = "07-01"
 parr.presmolt.date = "09-01"
@@ -66,20 +66,31 @@ Spline_Brood <- function(data,
   s.length <- max(data$days)
   smolt.date <- paste("2010-",smolt.parr.date, sep ="")
   parr.date <- paste("2010-",parr.presmolt.date, sep ="")
-  smolt.strata.cut <- round(yday(as.Date(smolt.date))/strata.length)# convert to smolt cutoff date to strata
-  parr.strata.cut <- round(yday(as.Date(parr.date))/strata.length) # convert parr cutoff date to strata
+  strata_key = data %>%
+    select(year,strata,strata_start,strata_end)
+
+  # convert to smolt cutoff date to strata
+  smolt.strata.cut <- data %>%
+    filter(strata_start == smolt.parr.date) %>%
+    pull(strata) %>%
+    unique() %>%
+    as.numeric()
+
+  # convert parr cutoff date to strata
+  parr.strata.cut <- data %>%
+    filter(strata_start == parr.presmolt.date) %>%
+    pull(strata) %>%
+    unique() %>%
+    as.numeric()
 
   #U updated for effort correction factor
   data$cor.factor <-data$effort/data$days
   data$u.cor <- round(data$u*(1/(data$effort/data$days)))
 
-  data$strata_date<-format(as.Date(data$strata*strata.length,
-                                   origin = paste(data$year, "-01-01", sep = "")))
-
   main_folder <- paste(species,"_",trap.name,"_",format(Sys.Date(), "%Y_%m_%d"),sep = "")
   dir.create(main_folder)
 
-  selectyr = 2014
+  # selectyr = 2014
 
   for(selectyr in sel.years){
 
@@ -96,7 +107,7 @@ Spline_Brood <- function(data,
     brood_data = rbind(brood_data_pp,brood_data_smolt) %>%
       mutate(model_strata = c(1:nrow(.)))
 
-        # Identify strata the trap wasn't running
+    # Identify strata the trap wasn't running
     not_op <- brood_data %>%
       filter(effort <= 0.5) %>%
       pull(model_strata)
@@ -163,7 +174,7 @@ Spline_Brood <- function(data,
 
     options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink
 
-    brood_data<-brood_data[,c(2,3,14,15,4:13)]
+    brood_data<-brood_data[,c("year","model_strata","strata","strata_start","strata_end","m","n","u","yoym","yoyn","yoyu","days","effort","cor.factor","u.cor")]
 
     sink(paste(main_folder,"/",selectyr,"_",species,"_",trap.name,"_Brood/Inputs/Input_Data.txt",sep = ""), append=FALSE, split=FALSE)
     print(brood_data)
@@ -294,15 +305,27 @@ Spline_Brood <- function(data,
              "mig_year" = "year") %>%
       mutate(across(where(is.numeric), ~ round(., 3)))
 
-    outputsummary$strata_date<-format(as.Date(outputsummary$strata*strata.length,
-                                              origin = paste(outputsummary$mig_year, "-01-01", sep = "")))
+    outputsummary = outputsummary %>%
+      left_join(strata_key %>%
+                  rename(mig_year=year), by = c("mig_year","strata"))
 
     ###########################################################
     #                      Life Stage                         #
     ###########################################################
 
-    smolt.strata <- round(yday(as.Date(smolt.date))/strata.length) - (min(data$strata)-1)# convert to smolt cutoff date to strata
-    parr.strata <- round(yday(as.Date(parr.date))/strata.length) - (min(data$strata)-1) # convert parr cutoff date to strata
+    # convert to smolt cutoff date to strata
+    smolt.strata <- data %>%
+      filter(strata_start == smolt.parr.date) %>%
+      pull(strata) %>%
+      unique() %>%
+      as.numeric() - (min(data$strata)-1)
+
+    # convert parr cutoff date to strata
+    parr.strata <- data %>%
+      filter(strata_start == parr.presmolt.date) %>%
+      pull(strata) %>%
+      unique() %>%
+      as.numeric() - (min(data$strata)-1)
 
     usep <- usep %>%
       mutate(model_strata = as.integer(sub("U\\[(\\d+)\\]", "\\1", Parameter))) %>%
@@ -341,6 +364,9 @@ Spline_Brood <- function(data,
 
       parrUoutputsummary$parameter<-paste("Parr_U_Brood_",selectyr, sep = "") # add Parameter variable
       parrUoutputsummary$mig_year<- selectyr+1 #add year variable
+      parrUoutputsummary$strata_start<- smolt.parr.date #add year variable
+      parrUoutputsummary$strata_end<- format(as.Date(parr.presmolt.date, format = "%m-%d") - 1, "%m-%d") #add year variable
+
 
       #########Presmolt###############
 
@@ -374,6 +400,8 @@ Spline_Brood <- function(data,
 
       presmoltUoutputsummary$parameter<-paste("Presmolt_U_Brood_",selectyr, sep = "") # add Parameter variable
       presmoltUoutputsummary$mig_year<- selectyr+1 #add year variable
+      presmoltUoutputsummary$strata_start<- parr.presmolt.date #add year variable
+      presmoltUoutputsummary$strata_end<- max(data$strata_end) #add year variable
     }
 
     ########## Smolt #############
@@ -411,6 +439,8 @@ Spline_Brood <- function(data,
 
       smoltUoutputsummary$parameter<-paste("Smolt_U_Brood_",selectyr, sep = "") # add Parameter variable
       smoltUoutputsummary$mig_year<- selectyr+2 #add year variable
+      smoltUoutputsummary$strata_start<- min(data$strata_start) #add year variable
+      smoltUoutputsummary$strata_end<- format(as.Date(smolt.parr.date, format = "%m-%d") - 1, "%m-%d") #add year variable
     }
 
     #setup bootstrap to randomly draw samples from each distribution in order to obtain total U statistics
@@ -487,14 +517,14 @@ Spline_Brood <- function(data,
       broodsummary<-rbind.fill(totUoutputsummary,parrUoutputsummary,presmoltUoutputsummary, outputsummary) #merge outputs
     }
 
-    broodsummary <- broodsummary[,c(10:14,5:9,1:4)]
+    broodsummary <- broodsummary[,c(10:15,5:9,1:4)]
 
     broodsummary <- broodsummary %>%
       left_join(brood_data %>%
-                  select(-c("strata_date","model_strata")) %>%
+                  select(-c("strata_start", "strata_end","model_strata")) %>%
                   rename("mig_year" ="year"), by = c("mig_year","strata"))
 
-        #read out files
+    #read out files
     options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink
 
     sink(paste(main_folder,"/",selectyr,"_",species,"_",trap.name,
@@ -523,11 +553,10 @@ Spline_Brood <- function(data,
     u_by_year <- broodsummary %>%
       filter(grepl("^U\\[", parameter))
 
-    u_by_year$date <- format(as.Date(u_by_year$strata*strata.length, origin = paste(u_by_year$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+    u_by_year$date <- format(as.Date(paste(u_by_year$mig_year,"-",u_by_year$strata_start, sep = "")), format = "%b %d %Y")
 
     p1 <- ggplot(u_by_year, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50)) +
       geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, col = "#56B4E9") +
-      geom_line() +
       geom_point() +
       labs(y = "Abundance (U)", x = NULL,  title = paste(selectyr,species,trap.name,"Brood")) +
       theme_minimal() +
@@ -538,17 +567,15 @@ Spline_Brood <- function(data,
         plot.title = element_text(size = 16)  # Increase the font size for the plot title
       )
 
-    p1
-
     p_by_year <- broodsummary %>%
       filter(grepl("^p\\[", parameter))
 
-    p_by_year$date <- format(as.Date(p_by_year$strata*strata.length, origin = paste(p_by_year$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+    p_by_year$date <- format(as.Date(paste(p_by_year$mig_year,"-",p_by_year$strata_start, sep = "")), format = "%b %d %Y")
 
     p2 <- ggplot(p_by_year, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50)) +
       geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, col = "#E69F00") +
-      geom_line() + geom_point() +
-      labs(y = "Capture probability (p)", x = "Strata") +
+      geom_point() +
+      labs(y = "Capture probability (p)", x = "Strata start date") +
       theme_minimal() +
       theme(
         axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Increase the font size for x-axis text
@@ -556,8 +583,6 @@ Spline_Brood <- function(data,
         axis.title = element_text(size = 14),  # Increase the font size for axis titles
         plot.title = element_text(size = 16)  # Increase the font size for the plot title
       )
-
-    p2
 
     ggsave(
       filename = paste(main_folder,"/",selectyr,"_",species,"_",trap.name,
@@ -571,3 +596,23 @@ Spline_Brood <- function(data,
 
   }
 }
+
+
+
+Spline_Brood(data,
+             effort.cor = FALSE,
+             sel.years = c( 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 ),
+             smolt.parr.date = "07-01",
+             parr.presmolt.date = "09-01",
+             species = "CHN",
+             trap.name = "MARTRP_Brood_SPLINE_Test",
+             den.plot = TRUE,
+             trace.plot = TRUE,
+             strata.length = 10,
+             burnin = 2000,
+             chains = 3,
+             iterations = 4000,
+             thin = 200,
+             boot = 5000,
+             model.params = c("p", "U", "etaP1", "etaU1", "sigmaU", "sigmaP"))
+

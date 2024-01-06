@@ -13,7 +13,8 @@
 #' @param strata length of desired strata in days (e.g. 1 week -> 7 days)
 #' @param species character string needed to subset data (should be identical to the species name in the RST_ops_obs_data set)
 #' @param trap.name character string used for titles and descriptions of reports
-#' @param smolt.date "MM-DD" smolt classification date needed for formatting
+#' @param smolt.date "MM-DD" smolt/parr life stage classification date needed for formatting. Date is the beginning of the parr life stage.
+#' @param parr.presmolt.date "MM-DD" parr/presmolt classification date needed for formatting. Date is the beginning of the smolt life stage.
 #'
 #' @import tidyverse
 #' @export
@@ -22,6 +23,7 @@
 Format_Chinook <- function(RST_ops_obs_data,
                            strata = 7,
                            smolt.date = "07-01",
+                           parr.presmolt.date = "09-01",
                            species,
                            trap.name){
 
@@ -100,19 +102,22 @@ Format_Chinook <- function(RST_ops_obs_data,
   #        Calendar fill, days, and effort      #
   ###############################################
 
-  # merge with calendar with trap data
-  trap_date_filled = merge(trap_merge, dates, by="date", all=TRUE)
-
+  # merge with calendar with trap data & remove Feb. 29 during leap years for consistency.
+  trap_date_filled = merge(trap_merge, dates, by="date", all=TRUE) %>%
+    filter(!(month(date) == 2 & day(date) == 29 & leap_year(year(date))))
 
   ###############################################
   #    Adding Julian Date & Year Variables      #
   ###############################################
 
   trap_date_filled$julian = yday(trap_date_filled$date)
+
+  trap_date_filled = trap_date_filled %>%
+    mutate(julian = ifelse(leap_year(year(date)) & month(date) > 2 & month(date) <= 12, julian - 1, julian))
+
   trap_date_filled$year = format(trap_date_filled$date, "%Y")
 
-  trap_full <-trap_date_filled
-
+  trap_full = trap_date_filled
 
   #########################################
   #                YOY                    #
@@ -144,7 +149,8 @@ Format_Chinook <- function(RST_ops_obs_data,
 
   trap_merge_yoy$date <- as.Date(trap_merge_yoy$date, format = "%m/%d/%Y")
 
-  trap_date_yoy_filled = merge(trap_merge_yoy, dates, by="date", all=TRUE)
+  trap_date_yoy_filled = merge(trap_merge_yoy, dates, by="date", all=TRUE) %>%
+    filter(!(month(date) == 2 & day(date) == 29 & leap_year(year(date))))
 
   # ------------------------------------
 
@@ -164,47 +170,109 @@ Format_Chinook <- function(RST_ops_obs_data,
   #              Stratifying              #
   #########################################
 
-  trap_full$strata=cut(trap_full$julian, seq(0, max(trap_full$julian, na.rm = TRUE)+strata, by=strata), labels=FALSE)
+  trap_smolt = trap_full %>%
+    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    filter(monthDay < smolt.date)
 
-  # -------------------------------------------
+  # Make it so strata are grouped by days starting from the identified smolt date and working backwards to the beginning
+  # of the year. This makes it so summaries for the smolt life-stage end at the defined date.
 
-  trap_week <- trap_full %>%
+  trap_smolt$strata=cut(rev(trap_smolt$julian), seq(0, max(trap_smolt$julian, na.rm = TRUE)+strata, by=strata),
+                        labels=seq(ceiling(max(trap_smolt$julian, na.rm = TRUE)/strata),1), right = TRUE)
+
+  trap_parr = trap_full %>%
+    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    filter(monthDay >= smolt.date & monthDay< parr.presmolt.date)
+
+  parr_seq <-c(seq(min(trap_parr$julian, na.rm = TRUE), max(trap_parr$julian, na.rm = TRUE), by=strata), max(trap_parr$julian, na.rm = TRUE)+1)
+
+  trap_parr$strata=cut(trap_parr$julian,
+                       breaks = parr_seq,
+                       labels=seq(max(as.numeric(trap_smolt$strata, na.rm = TRUE))+1, max(as.numeric(trap_smolt$strata, na.rm = TRUE))+length(parr_seq)-1),
+                       right = FALSE)
+
+  # IDFG biologist set hard dates for smolt/parr and parr/presmolt life-stage designations (typically 07-01 & 09-01). These hard date designations
+  # often result in the last strata of the parr life-stage not having enough days to fill a full strata.
+  # e.g. Aug 12-18 = 7 days, Aug 19-25 = 7 days, Aug 26-31 = 6 days.
+
+  # Since this typically happens at the end of August during base flow conditions, combining data during this time won't likely violate
+  # the assumption of homogeneous capture probabilities if the last two strata were combined. Additionally, the large pulse of presmolts typically occurs
+  # in October for most systems.
+
+  # The multi-year model doesn't have any issues dealing with variable strata sizes but the spline model may over- or under-
+  # estimate depending on data characteristics during the time period. A good compromise would be to combine the last two strata
+  # if the last strata was smaller than half the designated strata size.
+
+  # Example 1: Designated strata size = 7 days.
+  # Aug 12-18 = 7 days, Aug 19-25 = 7 days, Aug 26-31 = 6 days.
+  # Leave as-is
+
+  # Example 2: Designated strata size = 10 days.
+  # Aug 10-19 = 10 days, Aug 20-29 = 10 days, Aug 30-31 = 2 days.
+  # Merge last two strata: Aug 10-19 = 10 days, Aug 20-31 = 12 days
+
+  input_strata = strata  # oversite in duplicate naming in columns and function input.
+
+  trap_parr <- trap_parr %>%
     group_by(year, strata) %>%
-    summarise_at(vars(m, n, u, yoym, yoyn, yoyu, days, effort), sum, na.rm = TRUE)
+    mutate(row_count = n()) %>%
+    ungroup() %>%
+    mutate(strata = if_else(row_count < input_strata/2, max(as.numeric(as.character(trap_parr$strata)), na.rm = TRUE)-1, as.numeric(as.character(strata)))) %>%
+    select(-row_count)
+
+  trap_presmolt = trap_full %>%
+    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    filter(monthDay>= parr.presmolt.date)
+
+  presmolt_seq <- c(seq(min(trap_presmolt$julian, na.rm = TRUE), max(trap_presmolt$julian, na.rm = TRUE), by=strata), max(trap_presmolt$julian, na.rm = TRUE)+1)
+
+  trap_presmolt$strata=cut(trap_presmolt$julian,
+                           breaks = presmolt_seq,
+                           labels=seq(max(as.numeric(trap_parr$strata, na.rm = TRUE))+1, max(as.numeric(trap_parr$strata, na.rm = TRUE))+length(presmolt_seq)-1),
+                           right = FALSE)
+
+  trap_smolt = trap_smolt %>%
+    mutate(strata = as.numeric(as.character(strata)))
+  trap_parr = trap_parr %>%
+    mutate(strata = as.numeric(as.character(strata)))
+  trap_presmolt = trap_presmolt %>%
+    mutate(strata = as.numeric(as.character(strata)))
+
+  trap_strata_daily = trap_smolt %>%
+    bind_rows(trap_parr, trap_presmolt) %>%
+    arrange(.,date) %>%
+    group_by(strata) %>%
+    mutate(strata_start = min(monthDay),
+           strata_end = max(monthDay),
+           strata = as.numeric(as.character(strata)))
 
   # -------------------------------------------
 
+  trap_strata <- trap_strata_daily %>%
+    group_by(year, strata) %>%
+    summarise_at(vars(m, n, u, yoym, yoyn, yoyu, days, effort), sum, na.rm = TRUE) %>%
+    mutate(year = as.numeric(as.character(year)),
+           strata = as.numeric(as.character(strata)))
 
-  #Find the first and last Jweek the trap has operated through
-  #jweek
-
-  # -------------------------------------------
-
-  weeks <- trap_week %>%
+  # Find the first and last strata the trap operated
+  strata_summary <- trap_strata %>%
     group_by(strata) %>%
     summarise(freq = sum(effort))
 
-  # -------------------------------------------
+  trap_season=strata_summary[strata_summary$freq > 0 ,]
+  trap_start= min(trap_season$strata, na.rm=TRUE)
+  trap_finish=max(trap_season$strata, na.rm=TRUE)
 
-  trap_season=weeks[weeks$freq > 0 ,]
-  trap_start=as.numeric(min(trap_season$strata, na.rm=TRUE))
-  trap_finish=as.numeric(max(trap_season$strata, na.rm=TRUE))
-
-  #Find the first year the trap was in operation
-
-  # -------------------------------------------
-
-  years <- trap_week %>%
+  # Find the first year the trap was in operation
+  years <- trap_strata %>%
     group_by(year) %>%
     summarise(freq = sum(effort))
 
-  # -------------------------------------------
-
   trap_year=years[years$freq > 0 ,]
-  trap_start_year=as.numeric(min(trap_year$year, na.rm=TRUE))
+  trap_start_year=min(trap_year$year, na.rm=TRUE)
 
-  #Chop trap data to only the 1st year of operation, first ordinal week, and last ordinal week
-  trap_complete=trap_week[trap_week$strata >= trap_start , ]
+  # trim trap data from the first year of operation, first strata, and last strata
+  trap_complete=trap_strata[trap_strata$strata >= trap_start ,]
   trap_complete=trap_complete[trap_complete$strata <= trap_finish ,]
   trap_complete=trap_complete[trap_complete$year >= trap_start_year ,]
 
@@ -216,7 +284,13 @@ Format_Chinook <- function(RST_ops_obs_data,
   trap_complete = trap_complete %>%
     filter_all(any_vars(!is.na(.)))
 
-  today <- Sys.Date()
+  trap_complete = trap_complete %>%
+    left_join(trap_strata_daily %>%
+                select(strata,strata_start,strata_end) %>%
+                distinct(),
+              by = join_by(strata)) %>%
+    arrange(., by = year, strata)
+
 
   return(trap_complete)
 

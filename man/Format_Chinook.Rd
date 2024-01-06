@@ -8,6 +8,7 @@ Format_Chinook(
   RST_ops_obs_data,
   strata = 7,
   smolt.date = "07-01",
+  parr.presmolt.date = "09-01",
   species,
   trap.name
 )
@@ -17,7 +18,9 @@ Format_Chinook(
 
 \item{strata}{length of desired strata in days (e.g. 1 week -> 7 days)}
 
-\item{smolt.date}{"MM-DD" smolt classification date needed for formatting}
+\item{smolt.date}{"MM-DD" smolt/parr life stage classification date needed for formatting. Date is the beginning of the parr life stage.}
+
+\item{parr.presmolt.date}{"MM-DD" parr/presmolt classification date needed for formatting. Date is the beginning of the smolt life stage.}
 
 \item{species}{character string needed to subset data (should be identical to the species name in the RST_ops_obs_data set)}
 

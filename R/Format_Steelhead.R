@@ -89,17 +89,22 @@ Format_Steelhead <- function(RST_ops_obs_data,
   #        Calendar fill, days, and effort      #
   ###############################################
 
-  # merge with calendar with trap data
-  trap_date_filled = merge(trap_merge, dates, by="date", all=TRUE)
+  # merge with calendar with trap data & remove Feb. 29 during leap years for consistency.
+  trap_date_filled = merge(trap_merge, dates, by="date", all=TRUE) %>%
+    filter(!(month(date) == 2 & day(date) == 29 & leap_year(year(date))))
 
   ###############################################
   #    Adding Julian Date & Year Variables      #
   ###############################################
 
   trap_date_filled$julian = yday(trap_date_filled$date)
+
+  trap_date_filled = trap_date_filled %>%
+    mutate(julian = ifelse(leap_year(year(date)) & month(date) > 2 & month(date) <= 12, julian - 1, julian))
+
   trap_date_filled$year = format(trap_date_filled$date, "%Y")
 
-  trap_full <-trap_date_filled
+  trap_full = trap_date_filled
 
   trap_full <- merge(trap_full, day.effort, by="date", all=TRUE)
 
@@ -112,53 +117,69 @@ Format_Steelhead <- function(RST_ops_obs_data,
   trap_full["days"] <- 1
 
   #########################################
-  #              Stratafying              #
+  #              Stratifying              #
   #########################################
 
-  trap_full$strata=cut(trap_full$julian, seq(0, max(trap_full$julian, na.rm = TRUE)+7, by=strata), labels=FALSE)
+  trap_smolt = trap_full %>%
+    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    filter(monthDay < smolt.date)
 
-  #Summarize by Year and strata for Steelhead
+  # Make it so strata are grouped by days starting from the identified smolt date and working backwards to the beginning
+  # of the year. This makes it so summaries for the smolt life-stage end at the defined date.
+
+  trap_smolt$strata=cut(rev(trap_smolt$julian), seq(0, max(trap_smolt$julian, na.rm = TRUE)+strata, by=strata),
+                        labels=seq(ceiling(max(trap_smolt$julian, na.rm = TRUE)/strata),1), right = TRUE)
+
+  trap_juv = trap_full %>%
+    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    filter(monthDay >= smolt.date)
+
+  juv_seq <- c(seq(min(trap_juv$julian, na.rm = TRUE), max(trap_juv$julian, na.rm = TRUE), by=strata), max(trap_juv$julian, na.rm = TRUE)+1)
+
+  trap_juv$strata=cut(trap_juv$julian,
+                      breaks = juv_seq,
+                      labels= seq(max(as.numeric(trap_smolt$strata, na.rm = TRUE))+1, max(as.numeric(trap_smolt$strata, na.rm = TRUE))+length(juv_seq)-1),
+                      right = FALSE)
 
   # -------------------------------------------
+  trap_smolt = trap_smolt %>%
+    mutate(strata = as.numeric(as.character(strata)))
+  trap_juv = trap_juv %>%
+    mutate(strata = as.numeric(as.character(strata)))
 
-  trap_week <- trap_full %>%
+  trap_strata_daily = trap_smolt %>%
+    bind_rows(trap_juv) %>%
+    arrange(.,date) %>%
+    group_by(strata) %>%
+    mutate(strata_start = min(monthDay),
+           strata_end = max(monthDay),
+           strata = as.numeric(as.character(strata)))
+
+  trap_strata <- trap_strata_daily %>%
     group_by(year, strata) %>%
-    summarise_at(vars(m, n, u, days, effort), sum, na.rm = TRUE)
+    summarise_at(vars(m, n, u, days, effort), sum, na.rm = TRUE) %>%
+    mutate(year = as.numeric(as.character(year)),
+           strata = as.numeric(as.character(strata)))
 
-  # -------------------------------------------
-
-
-  #Find the first and last Jweek the trap has operated through
-  #jweek
-
-  # -------------------------------------------
-
-  weeks <- trap_week %>%
+  # Find the first and last strata the trap operated
+  strata_summary <- trap_strata %>%
     group_by(strata) %>%
     summarise(freq = sum(effort))
 
-  # -------------------------------------------
+  trap_season=strata_summary[strata_summary$freq > 0 ,]
+  trap_start= min(trap_season$strata, na.rm=TRUE)
+  trap_finish=max(trap_season$strata, na.rm=TRUE)
 
-  trap_season=weeks[weeks$freq > 0 ,]
-  trap_start=as.numeric(min(trap_season$strata, na.rm=TRUE))
-  trap_finish=as.numeric(max(trap_season$strata, na.rm=TRUE))
-
-  #Find the first year the trap was in operation
-
-  # -------------------------------------------
-
-  years <- trap_week %>%
+  # Find the first year the trap was in operation
+  years <- trap_strata %>%
     group_by(year) %>%
     summarise(freq = sum(effort))
 
-  # -------------------------------------------
-
   trap_year=years[years$freq > 0 ,]
-  trap_start_year=as.numeric(min(trap_year$year, na.rm=TRUE))
+  trap_start_year=min(trap_year$year, na.rm=TRUE)
 
-
-  # Chop trap data to only the 1st year of operation, first ordinal week, and last ordinal week
-  trap_complete=trap_week[trap_week$strata >= trap_start , ]
+  # trim trap data from the first year of operation, first strata, and last strata
+  trap_complete=trap_strata[trap_strata$strata >= trap_start , ]
   trap_complete=trap_complete[trap_complete$strata <= trap_finish ,]
   trap_complete=trap_complete[trap_complete$year >= trap_start_year ,]
 
@@ -168,7 +189,12 @@ Format_Steelhead <- function(RST_ops_obs_data,
   trap_complete = trap_complete %>%
     filter_all(any_vars(!is.na(.)))
 
-  today <- Sys.Date()
+  trap_complete = trap_complete %>%
+    left_join(trap_strata_daily %>%
+                select(strata,strata_start,strata_end) %>%
+                distinct(),
+              by = join_by(strata)) %>%
+    arrange(., by = year, strata)
 
   return(trap_complete)
 

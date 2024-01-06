@@ -60,4 +60,6 @@ This function implements Bayesian methods to fit a Penalized-spline (p-spline) t
 The p-spline model was developed by Bonner & Schwarz (2011) and the R script to implement the model utilizes the TimeStratPetersenDiagError_fit()function
 found in the BTSPAS packages.
 This function was intended to be used to summarize juvenile steelhead abundances by calendar year.
+At a minimum, input data should have columns "year","strata","m","n","u","days","effort","strata_start","strata_end".
+See example data for formatting.
 }

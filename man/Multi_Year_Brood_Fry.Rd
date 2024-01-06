@@ -7,6 +7,7 @@
 Multi_Year_Brood_Fry(
   data,
   effort.cor = FALSE,
+  effort.cor.fry = FALSE,
   sel.years = currentyear,
   strata.op.min = 1,
   smolt.parr.date = "07-01",
@@ -28,6 +29,8 @@ Multi_Year_Brood_Fry(
 \item{data}{capture-mark-recapture data frame}
 
 \item{effort.cor}{expands the number of unmarked fish captured by a sampling effort}
+
+\item{effort.cor.fry}{expands the number of unmarked fry captured by a sampling effort}
 
 \item{sel.years}{selected year(s) to compute abundance estimates}
 
@@ -63,4 +66,6 @@ Multi_Year_Brood_Fry(
 This function implements a Bayesian model with a hierarchical structure for U and p by strata between years.
 This function was intended to be used to summarize juvenile Chinook Salmon abundances by brood year and provide estimates with and without fry.
 e.g. Summaries for brood year 2012 consist of fry(calendary year 2013), parr (calendar year 2013), presmolts (calendar year 2013), smolts (calendar year 2014).
+At a minimum, input data should have columns "year","strata","m","n","u","yoym","yoyn","yoyu","days","effort","strata_start","strata_end".
+See example data for formatting.
 }

@@ -24,7 +24,7 @@ Multi_Year_Calendar(
 )
 }
 \arguments{
-\item{data}{capture-mark-recapture data frame}
+\item{data}{capture-mark-recapture data frame.}
 
 \item{effort.cor}{expands the number of unmarked fish captured by a sampling effort}
 
@@ -59,4 +59,6 @@ Multi_Year_Calendar(
 \description{
 This function implements a Bayesian model with a hierarchical structure for U and p by strata between years.
 This function was intended to be used to summarize juvenile steelhead abundances by calendar year.
+At a minimum, input data should have columns "year","strata","m","n","u","days","effort","strata_start","strata_end".
+See example data for formatting.
 }

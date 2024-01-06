@@ -11,9 +11,10 @@ library(data.table)
 library(gridExtra)
 library(here)
 
-data <- read.csv(here("data/example_export/Example_data.csv"))
+data <- read.csv(here("data/example_export/Example_data_new.csv"))
 
 effort.cor = FALSE
+effort.cor.fry = FALSE
 sel.years = c(2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 )
 strata.op.min = 1
 smolt.parr.date = "07-01"
@@ -32,6 +33,7 @@ model.params = c("p", "U", "etaP1", "etaU1", "sigmaU", "sigmaP")
 
 Multi_Year_Brood_Fry <- function(data,
                                  effort.cor = FALSE,
+                                 effort.cor.fry = FALSE,
                                  sel.years = currentyear,
                                  strata.op.min = 1,
                                  smolt.parr.date = "07-01",
@@ -66,6 +68,8 @@ Multi_Year_Brood_Fry <- function(data,
   s.length <- max(data$days)
   smolt.date <- paste("2010-",smolt.parr.date, sep ="")
   parr.date <- paste("2010-",parr.presmolt.date, sep ="")
+  strata_key = data %>%
+    select(year,strata,strata_start,strata_end)
 
   model <- function() {
     for(i in 1:strata){
@@ -101,10 +105,8 @@ Multi_Year_Brood_Fry <- function(data,
 
   #U updated for effort correction factor
   data$cor.factor <-data$effort/data$days
-  data$u.cor <- round(data$u*(1/(data$effort/data$days)))
-
-  data$strata_date<-format(as.Date(data$strata*strata.length,
-                                   origin = paste(data$year, "-01-01", sep = "")))
+  data$u.cor <- round(data$u*(1/data$cor.factor))
+  data$yoyu.cor <- round(data$yoyu*(1/data$cor.factor))
 
   if(effort.cor == TRUE) {
     datau=matrix(data$u.cor, nrow=length(unique(data$strata)), ncol=length(unique(data$year)))
@@ -163,13 +165,18 @@ Multi_Year_Brood_Fry <- function(data,
     sigmatu <- 1/sqrt(tu) #variance
   }
 
-  # Input Data ######################################################################################
+  # Input Data Fry ###################################################################################
 
-  smolt.strata <- round(yday(as.Date(smolt.date))/strata.length) - (min(data$strata)-1)# convert to smolt cutoff date to strata
+  # convert to smolt cutoff date to strata. Fry are defined as subtaggable fish captured during Smolt period
+  smolt.strata <- data %>%
+    filter(strata_start == smolt.parr.date) %>%
+    pull(strata) %>%
+    unique() %>%
+    as.numeric() - (min(data$strata)-1)
 
-  fry.data <- data[data$strata <= smolt.strata+(min(data$strata)-1),] #convert smolt cutoff strata to ordinal strata
+  fry.data <- data[data$strata < smolt.strata+(min(data$strata)-1),] #convert smolt cutoff strata to ordinal strata
 
-  if(effort.cor == TRUE) {
+  if(effort.cor.fry == TRUE) {
     datayoyu=matrix(round(fry.data$yoyu*(1/(fry.data$effort/fry.data$days))), nrow=length(unique(fry.data$strata)), ncol=length(unique(fry.data$year)))
   } else {
     datayoyu=matrix(fry.data$yoyu,nrow=length(unique(fry.data$strata)), ncol=length(unique(fry.data$year)))
@@ -191,7 +198,6 @@ Multi_Year_Brood_Fry <- function(data,
   model.fit.fry <- jags(data = model.data, inits = NULL,
                         parameters.to.save = model.params, n.chains = chains, n.iter = iterations,
                         n.burnin = burnin, n.thin = thin, model.file = model.fry)
-
 
   #########################
 
@@ -218,7 +224,7 @@ Multi_Year_Brood_Fry <- function(data,
 
   options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink
 
-  data<-data[,c(2,3,14,4:13)]
+  data<-data[,c("year","strata","strata_start","strata_end","m","n","u","yoym","yoyn","yoyu","days","effort","cor.factor","u.cor", "yoyu.cor")]
 
   sink(paste(main_folder,"/Inputs/Input_Data.txt",sep = ""), append=FALSE, split=FALSE)
   print(data)
@@ -231,6 +237,7 @@ Multi_Year_Brood_Fry <- function(data,
   writeLines(paste(Sys.Date(),"\n",
                    "Multi_Year_Brood_Fry()", "\n",
                    "effort.cor = ",effort.cor, "\n",
+                   "effort.cor.fry = ",effort.cor.fry, "\n",
                    "sel.years = ", paste(sel.years, collapse = ", "), "\n",
                    "strata.op.min = ", strata.op.min, "\n",
                    "smolt.parr.date = ", smolt.parr.date, "\n",
@@ -338,8 +345,9 @@ Multi_Year_Brood_Fry <- function(data,
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
 
-  outputsummary$strata_date<-format(as.Date(outputsummary$strata*strata.length,
-                                            origin = paste(outputsummary$mig_year, "-01-01", sep = "")))
+  outputsummary = outputsummary %>%
+    left_join(strata_key %>%
+                rename(mig_year=year), by = c("mig_year","strata"))
 
   # find strata that are below the minimum strata operation threshold.
   ag.strata <- aggregate(ceiling(data$cor.factor), by=list(strata=data$strata), FUN=sum)
@@ -347,7 +355,7 @@ Multi_Year_Brood_Fry <- function(data,
   x.strata <- as.character(excl.strata$strata)
 
   #reorder output
-  outputsummary <- outputsummary[,c(1,12,13,11,6:10,2:5 )]
+  outputsummary <- outputsummary[,c(1,12,13,14,11,6:10,2:5 )]
 
   sink(paste(main_folder,"/Results/General/All_",species,"_",trap.name,"_Results.txt",sep = ""), append=FALSE, split=FALSE)
   writeLines(paste( Sys.Date(),"\n",
@@ -466,8 +474,9 @@ Multi_Year_Brood_Fry <- function(data,
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
 
-  outputsummary.fry$strata_date<-format(as.Date(outputsummary.fry$strata*strata.length,
-                                                origin = paste(outputsummary.fry$mig_year, "-01-01", sep = "")))
+  outputsummary.fry = outputsummary.fry %>%
+    left_join(strata_key %>%
+                rename(mig_year=year), by = c("mig_year","strata"))
 
   # find strata that are below the minimum strata operation threshold.
   fry.ag.strata <- aggregate(ceiling(fry.data$cor.factor), by=list(strata=fry.data$strata), FUN=sum)
@@ -475,7 +484,7 @@ Multi_Year_Brood_Fry <- function(data,
   fry.x.strata <- as.character(fry.excl.strata$strata)
 
   #reorder output
-  outputsummary.fry <- outputsummary.fry[,c(1,12,13,11,6:10,2:5 )]
+  outputsummary.fry <- outputsummary.fry[,c(1,12,13,14,11,6:10,2:5)]
 
   sink(paste(main_folder,"/Results/General/All_",species,"_",trap.name,"_Results_Fry.txt",sep = ""), append=FALSE, split=FALSE)
   writeLines(paste( Sys.Date(),"\n",
@@ -505,10 +514,16 @@ Multi_Year_Brood_Fry <- function(data,
   #############                      Brood Summary Loop                          #########
   #########################################################################################
 
-  smolt.strata <- round(yday(as.Date(smolt.date))/strata.length) - (min(data$strata)-1)# convert to smolt cutoff date to strata
-  parr.strata <- round(yday(as.Date(parr.date))/strata.length) - (min(data$strata)-1) # convert parr cutoff date to strata
+  # convert parr cutoff date to strata
+  # NOTE: smolt.strata was defined earlier because it was needed for fry data subsetting
+  parr.strata <- data %>%
+    filter(strata_start == parr.presmolt.date) %>%
+    pull(strata) %>%
+    unique() %>%
+    as.numeric() - (min(data$strata)-1)
 
-  selectyr = 2019
+  # Temporary
+  #selectyr = 2019
 
   for(selectyr in sel.years){
 
@@ -556,6 +571,8 @@ Multi_Year_Brood_Fry <- function(data,
 
       parrUoutputsummary$parameter<-paste("Parr_U_Brood_",selectyr) # add Parameter variable
       parrUoutputsummary$mig_year<- selectyr+1 #add year variable
+      parrUoutputsummary$strata_start<- smolt.parr.date #add year variable
+      parrUoutputsummary$strata_end<- format(as.Date(parr.presmolt.date, format = "%m-%d") - 1, "%m-%d") #add year variable
 
       #########Presmolt###############
 
@@ -591,6 +608,8 @@ Multi_Year_Brood_Fry <- function(data,
 
       presmoltUoutputsummary$parameter<-paste("Presmolt_U_Brood_",selectyr) # add Parameter variable
       presmoltUoutputsummary$mig_year<- selectyr+1 #add year variable
+      presmoltUoutputsummary$strata_start<- parr.presmolt.date #add year variable
+      presmoltUoutputsummary$strata_end<- max(data$strata_end) #add year variable
     }
 
     ########## Smolt #############
@@ -636,6 +655,8 @@ Multi_Year_Brood_Fry <- function(data,
 
       smoltUoutputsummary$parameter<-paste("Smolt_U_Brood_",selectyr) # add Parameter variable
       smoltUoutputsummary$mig_year<- selectyr+2 #add year variable
+      smoltUoutputsummary$strata_start<- min(data$strata_start) #add year variable
+      smoltUoutputsummary$strata_end<- format(as.Date(smolt.parr.date, format = "%m-%d") - 1, "%m-%d") #add year variable
 
     }
 
@@ -680,6 +701,8 @@ Multi_Year_Brood_Fry <- function(data,
 
       fryUoutputsummary$parameter<-paste("Fry_U_Brood_",selectyr) # add Parameter variable
       fryUoutputsummary$mig_year<- selectyr+1 #add year variable
+      fryUoutputsummary$strata_start<- min(data$strata_start) #add year variable
+      fryUoutputsummary$strata_end<- format(as.Date(smolt.parr.date, format = "%m-%d") - 1, "%m-%d") #add year variable
 
     }
 
@@ -845,8 +868,9 @@ Multi_Year_Brood_Fry <- function(data,
       mutate(across(where(is.numeric), ~ round(., 3))) %>%
       arrange(mig_year, parameter)
 
-    boutputsummary$strata_date<-format(as.Date(boutputsummary$strata*strata.length,
-                                               origin = paste(boutputsummary$mig_year, "-01-01", sep = "")))
+    boutputsummary = boutputsummary %>%
+      left_join(strata_key %>%
+                  rename(mig_year=year), by = c("mig_year","strata"))
 
     # adding the if condition so the code does not run for 2 years before the minimum year in the data
     if(min(data$year) - selectyr < 2){
@@ -883,8 +907,9 @@ Multi_Year_Brood_Fry <- function(data,
         arrange(mig_year, parameter) %>%
         mutate(parameter = paste("F", parameter, sep=""))
 
-      foutputsummary$strata_date<-format(as.Date(foutputsummary$strata*strata.length,
-                                                 origin = paste(foutputsummary$mig_year, "-01-01", sep = "")))
+      foutputsummary = foutputsummary %>%
+        left_join(strata_key %>%
+                    rename(mig_year=year), by = c("mig_year","strata"))
 
     }
 
@@ -916,7 +941,7 @@ Multi_Year_Brood_Fry <- function(data,
 
     }
 
-    broodsummary <- broodsummary[,c(10:13,5:9,1:4)]
+    broodsummary <- broodsummary[,c(10:14,5:9,1:4)]
 
     data_by_year <- broodsummary
 
@@ -935,7 +960,7 @@ Multi_Year_Brood_Fry <- function(data,
     rows <- match(extracted_parts1, extracted_parts2)
 
     #Selecting the matched rows from the "All" output summary
-    p_by_year <- outputsummary[rows,c(3,1:2,4:13)]
+    p_by_year <- outputsummary[rows,c(3,1:2,4:14)]
 
     ##############################################################
 
@@ -963,7 +988,7 @@ Multi_Year_Brood_Fry <- function(data,
       rows <- match(extracted_parts3, extracted_parts4)
 
       #Selecting the matched rows from the "All" FRY output summary
-      fp_by_year <- outputsummary.fry[rows,c(3,1:2,4:13)]
+      fp_by_year <- outputsummary.fry[rows,c(3,1:2,4:14)]
 
       #Changing p to Fp
       fp_by_year$parameter <- gsub("p\\[(\\d+),(\\d+)\\]", "Fp[\\1,\\2]", fp_by_year$parameter)
@@ -975,7 +1000,7 @@ Multi_Year_Brood_Fry <- function(data,
 
     broodsummary <- broodsummary %>%
       left_join(data %>%
-                  select(-"strata_date") %>%
+                  select(-c("strata_start", "strata_end")) %>%
                   rename("mig_year" ="year"), by = c("mig_year","strata"))
 
     #read out files
@@ -1008,7 +1033,7 @@ Multi_Year_Brood_Fry <- function(data,
 
       UandFUdata <- rbind(fu_by_year, u_by_year)
 
-      UandFUdata$date <- format(as.Date(UandFUdata$strata*strata.length, origin = paste(UandFUdata$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+      UandFUdata$date <- format(as.Date(paste(UandFUdata$mig_year,"-",UandFUdata$strata_start, sep = "")), format = "%b %d %Y")
 
       # Create a new column with the first letter of Parameter
       UandFUdata <- UandFUdata %>%
@@ -1019,7 +1044,6 @@ Multi_Year_Brood_Fry <- function(data,
 
       p1 <- ggplot(UandFUdata, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50, color = ParameterType)) +
         geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, position = position_dodge(width = 0.5)) +
-        geom_line(position = position_dodge(width = 0.5)) +
         geom_point(position = position_dodge(width = 0.5)) +
         scale_color_manual(values = parameter_colors) +
         labs(y = "Abundance (U)", x = NULL, title = paste(selectyr,species,trap.name,"Brood")) +
@@ -1033,7 +1057,7 @@ Multi_Year_Brood_Fry <- function(data,
 
       PandFPdata <- rbind(fp_by_year, p_by_year)
 
-      PandFPdata$date <- format(as.Date(PandFPdata$strata*strata.length, origin = paste(PandFPdata$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+      PandFPdata$date <- format(as.Date(paste(PandFPdata$mig_year,"-",PandFPdata$strata_start, sep = "")), format = "%b %d %Y")
 
       # Create a new column with the first letter of Parameter
       PandFPdata <- PandFPdata %>%
@@ -1044,10 +1068,9 @@ Multi_Year_Brood_Fry <- function(data,
 
       p2 <- ggplot(PandFPdata, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50, color = ParameterType)) +
         geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, position = position_dodge(width = 0.5)) +
-        geom_line(position = position_dodge(width = 0.5)) +
         geom_point(position = position_dodge(width = 0.5)) +
         scale_color_manual(values = parameter_colors) +
-        labs(y = "Capture probability (p)", x = "Strata") +
+        labs(y = "Capture probability (p)", x = "Strata start date") +
         theme_minimal() +
         theme(
           axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Increase the font size for x-axis text
@@ -1063,11 +1086,10 @@ Multi_Year_Brood_Fry <- function(data,
              height = 6   # Adjust the height as needed)
       )
 
-      u_by_year$date <- format(as.Date(u_by_year$strata*strata.length, origin = paste(u_by_year$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+      u_by_year$date <- format(as.Date(paste(u_by_year$mig_year,"-",u_by_year$strata_start, sep = "")), format = "%b %d %Y")
 
       p3 <- ggplot(u_by_year, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50)) +
         geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, col = "#56B4E9") +
-        geom_line() +
         geom_point() +
         labs(y = "Abundance (U)", x = NULL, title = paste(selectyr,species,trap.name,"Brood")) +
         theme_minimal() +
@@ -1078,12 +1100,12 @@ Multi_Year_Brood_Fry <- function(data,
           plot.title = element_text(size = 16)  # Increase the font size for the plot title
         )
 
-      p_by_year$date <- format(as.Date(p_by_year$strata*strata.length, origin = paste(p_by_year$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+      p_by_year$date <- format(as.Date(paste(p_by_year$mig_year,"-",p_by_year$strata_start, sep = "")), format = "%b %d %Y")
 
       p4 <- ggplot(p_by_year, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50)) +
         geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, col = "#E69F00") +
-        geom_line() + geom_point() +
-        labs(y = "Capture probability (p)", x = "Strata") +
+        geom_point() +
+        labs(y = "Capture probability (p)", x = "Strata start date") +
         theme_minimal() +
         theme(
           axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Increase the font size for x-axis text
@@ -1104,11 +1126,10 @@ Multi_Year_Brood_Fry <- function(data,
       # adding the if condition so the code runs for 2 years before the minimum year in the data (no fry info in this case)
     }else{
 
-      u_by_year$date <- format(as.Date(u_by_year$strata*strata.length, origin = paste(u_by_year$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+      u_by_year$date <- format(as.Date(paste(u_by_year$mig_year,"-",u_by_year$strata_start, sep = "")), format = "%b %d %Y")
 
       p3 <- ggplot(u_by_year, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50)) +
         geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, col = "#56B4E9") +
-        geom_line() +
         geom_point() +
         labs(y = "Abundance (U)", x = NULL, title = paste(selectyr,species,trap.name,"Brood")) +
         theme_minimal() +
@@ -1119,12 +1140,12 @@ Multi_Year_Brood_Fry <- function(data,
           plot.title = element_text(size = 16)  # Increase the font size for the plot title
         )
 
-      p_by_year$date <- format(as.Date(p_by_year$strata*strata.length, origin = paste(p_by_year$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+      p_by_year$date <- format(as.Date(paste(p_by_year$mig_year,"-",p_by_year$strata_start, sep = "")), format = "%b %d %Y")
 
       p4 <- ggplot(p_by_year, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50)) +
         geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, col = "#E69F00") +
-        geom_line() + geom_point() +
-        labs(y = "Capture probability (p)", x = "Strata") +
+        geom_point() +
+        labs(y = "Capture probability (p)", x = "Strata start date") +
         theme_minimal() +
         theme(
           axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Increase the font size for x-axis text
@@ -1146,4 +1167,22 @@ Multi_Year_Brood_Fry <- function(data,
 }
 
 
+Multi_Year_Brood_Fry(data,
+                 effort.cor = FALSE,
+                 effort.cor.fry = FALSE,
+                 sel.years = c(2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021),
+                 strata.op.min = 1,
+                 smolt.parr.date = "07-01",
+                 parr.presmolt.date = "09-01",
+                 species = "Chnk",
+                 trap.name = "ScrewTrap",
+                 den.plot = TRUE,
+                 trace.plot = TRUE,
+                 strata.length = 10,
+                 burnin = 2000,
+                 chains = 3,
+                 iterations = 4000,
+                 thin = 200,
+                 boot = 5000,
+                 model.params = c("p","U","etaP1","etaU1","sigmaU","sigmaP"))
 

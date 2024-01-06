@@ -2,8 +2,10 @@
 
 #' @description This function implements a Bayesian model with a hierarchical structure for U and p by strata between years.
 #' This function was intended to be used to summarize juvenile steelhead abundances by calendar year.
+#' At a minimum, input data should have columns "year","strata","m","n","u","days","effort","strata_start","strata_end".
+#' See example data for formatting.
 #'
-#' @param data capture-mark-recapture data frame
+#' @param data capture-mark-recapture data frame.
 #' @param burnin number of initial MCMC chain iterations to be discarded
 #' @param chains number of MCMC chains (>1)
 #' @param iterations number of MCMC iterations per chain
@@ -60,6 +62,8 @@ Multi_Year_Calendar <- function(data,
   currentyear <- max(data$year)-2
   s.length <- max(data$days)
   smolt.date <- paste("2010-",smolt.juv.date, sep ="")
+  strata_key = data %>%
+    select(year,strata,strata_start,strata_end)
 
   model <- function() {
     for(i in 1:strata){
@@ -97,9 +101,6 @@ Multi_Year_Calendar <- function(data,
   data$cor.factor <-data$effort/data$days
   data$u.cor <- round(data$u*(1/(data$effort/data$days)))
 
-  data$strata_date<-format(as.Date(data$strata*strata.length,
-                                   origin = paste(data$year, "-01-01", sep = "")))
-
   if(effort.cor == TRUE) {
     datau=matrix(data$u.cor, nrow=length(unique(data$strata)), ncol=length(unique(data$year)))
   } else {
@@ -130,7 +131,7 @@ Multi_Year_Calendar <- function(data,
 
   options(scipen = 999) #change scientific notation
 
-  main_folder <- paste(species,"_",trap.name,"_MYC_",format(Sys.Date(), "%Y_%m_%d"),sep = "")
+  main_folder <- paste(species,"_",trap.name,"_",format(Sys.Date(), "%Y_%m_%d"),sep = "")
   dir.create(main_folder)
   dir.create(paste(main_folder,"/Inputs",sep = ""))
   dir.create(paste(main_folder,"/MCMC_Chains",sep = ""))
@@ -144,7 +145,7 @@ Multi_Year_Calendar <- function(data,
 
   options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink
 
-  data<-data[,c(2,3,14,4:13)]
+  data<-data[,c("year","strata","strata_start","strata_end","m","n","u","yoym","yoyn","yoyu","days","effort","cor.factor","u.cor")]
 
   sink(paste(main_folder,"/Inputs/Input_Data.txt",sep = ""), append=FALSE, split=FALSE)
   print(data)
@@ -238,7 +239,7 @@ Multi_Year_Calendar <- function(data,
       mode = as.numeric(names(which.max(table(value)))),
       mean = mean(value),
       sd = sd(value),
-      naiveSE = sd / sqrt(length(value)),
+      naiveSE = sd / sqrt(n()),
       quantile_2.5 = quantile(value, probs = 0.025),
       quantile_25 = quantile(value, probs = 0.25),
       quantile_50 = quantile(value, probs = 0.5),
@@ -259,13 +260,14 @@ Multi_Year_Calendar <- function(data,
 
   # clean up summary stats
   outputsummary <- outputsummary %>%
-    dplyr::rename("parameter" = "Parameter",
+    rename("parameter" = "Parameter",
            "mig_year"="year") %>%
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
 
-  outputsummary$strata_date<-format(as.Date(outputsummary$strata*strata.length,
-                                            origin = paste(outputsummary$mig_year, "-01-01", sep = "")))
+  outputsummary = outputsummary %>%
+    left_join(strata_key %>%
+                rename(mig_year=year), by = c("mig_year","strata"))
 
   # find strata that are below the minimum strata operation threshold.
   ag.strata <- aggregate(ceiling(data$cor.factor), by=list(strata=data$strata), FUN=sum)
@@ -273,7 +275,7 @@ Multi_Year_Calendar <- function(data,
   x.strata <- as.character(excl.strata$strata)
 
   #reorder output
-  outputsummary <- outputsummary[,c(1,12,13,11,6:10,2:5 )]
+  outputsummary <- outputsummary[,c(1,12,13,14,11,6:10,2:5)]
 
   sink(paste(main_folder,"/Results/General/All_",species,"_",trap.name,"_Results.txt",sep = ""), append=FALSE, split=FALSE)
   writeLines(paste( Sys.Date(),"\n",
@@ -302,9 +304,13 @@ Multi_Year_Calendar <- function(data,
   #                      Life Stage                         #
   ###########################################################
 
-  smolt.strata <- round(yday(as.Date(smolt.date))/strata.length) - (min(data$strata)-1) # convert to smolt cutoff date to strata
+  smolt.strata <- data %>%
+    filter(strata_start == smolt.juv.date) %>%
+    pull(strata) %>%
+    unique() %>%
+    as.numeric() - (min(data$strata)-1)
 
-  selectyr = 2019
+  # selectyr = 2019
 
   for(selectyr in sel.years){
 
@@ -336,11 +342,11 @@ Multi_Year_Calendar <- function(data,
 
     #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
     juvUoutputsummary <- juvUdist %>%
-      dplyr::summarise(
+      summarise(
         mode = as.numeric(names(which.max(table(juvUdist)))),
         mean = mean(juvUdist),
         sd = sd(juvUdist),
-        naiveSE = sd / sqrt(length(juvUdist)),
+        naiveSE = sd / sqrt(n()),
         quantile_2.5 = quantile(juvUdist, probs = 0.025),
         quantile_25 = quantile(juvUdist, probs = 0.25),
         quantile_50 = quantile(juvUdist, probs = 0.5),
@@ -349,6 +355,8 @@ Multi_Year_Calendar <- function(data,
 
     juvUoutputsummary$parameter<-paste("Juv_U_",selectyr) # add Parameter variable
     juvUoutputsummary$mig_year<- selectyr #add year variable
+    juvUoutputsummary$strata_start <- smolt.juv.date #add year variable
+    juvUoutputsummary$strata_end<- max(data$strata_end) #add year variable
 
     ################## SMOLT ##########################
 
@@ -371,11 +379,11 @@ Multi_Year_Calendar <- function(data,
 
     #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
     smoltUoutputsummary <- smoltUdist %>%
-      dplyr::summarise(
+      summarise(
         mode = as.numeric(names(which.max(table(smoltUdist)))),
         mean = mean(smoltUdist),
         sd = sd(smoltUdist),
-        naiveSE = sd / sqrt(length(smoltUdist)),
+        naiveSE = sd / sqrt(n()),
         quantile_2.5 = quantile(smoltUdist, probs = 0.025),
         quantile_25 = quantile(smoltUdist, probs = 0.25),
         quantile_50 = quantile(smoltUdist, probs = 0.5),
@@ -384,6 +392,9 @@ Multi_Year_Calendar <- function(data,
 
     smoltUoutputsummary$parameter<-paste("Smolt_U_",selectyr) # add Parameter variable
     smoltUoutputsummary$mig_year<- selectyr #add year variable
+    smoltUoutputsummary$strata_start<- min(data$strata_start) #add year variable
+    smoltUoutputsummary$strata_end<- format(as.Date(smolt.juv.date, format = "%m-%d") - 1, "%m-%d") #add year variable
+
 
     # setup bootstrap to randomly draw samples from each distribution in order to obtain total U statistics
     usepdt<-as.data.table(usep) # turn usep into a datable for bootstrap
@@ -404,11 +415,11 @@ Multi_Year_Calendar <- function(data,
 
     #Get summary statistics for U bootstrapped distribution
     totUoutputsummary <- totUdist %>%
-      dplyr::summarise(
+      summarise(
         mode = as.numeric(names(which.max(table(totUdist)))),
         mean = mean(totUdist),
         sd = sd(totUdist),
-        naiveSE = sd / sqrt(length(totUdist)),
+        naiveSE = sd / sqrt(n()),
         quantile_2.5 = quantile(totUdist, probs = 0.025),
         quantile_25 = quantile(totUdist, probs = 0.25),
         quantile_50 = quantile(totUdist, probs = 0.5),
@@ -424,8 +435,6 @@ Multi_Year_Calendar <- function(data,
 
     cal.summary<-rbind.fill(totUoutputsummary, smoltUoutputsummary, juvUoutputsummary, year_int) #merge outputs
 
-    cal.summary <- cal.summary[,c(10:13,5:9,1:4)]
-
     juv1<- subset(usep, strata >= (smolt.strata+1))
     smolt1<- subset(usep, strata <= smolt.strata)
 
@@ -437,12 +446,14 @@ Multi_Year_Calendar <- function(data,
 
     cal.summary <- rbind(cal.summary, p_by_year)
 
+    cal.summary <- cal.summary[,c(10:14,5:9,1:4)]
+
     options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink
 
     cal.summary <- cal.summary %>%
       left_join(data %>%
-                  select(-"strata_date") %>%
-                  dplyr::rename("mig_year" ="year"), by = c("mig_year","strata"))
+                  select(-c("strata_start", "strata_end")) %>%
+                  rename("mig_year" ="year"), by = c("mig_year","strata"))
 
     #read out files
     sink(paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Calendar/",
@@ -466,11 +477,10 @@ Multi_Year_Calendar <- function(data,
                                         selectyr,"_",species,"_",trap.name,"_Calendar_Results.csv",sep = ""))
     ##### Figs
 
-    u_by_year$date <- format(as.Date(u_by_year$strata*strata.length, origin = paste(u_by_year$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+    u_by_year$date <- format(as.Date(paste(u_by_year$mig_year,"-",u_by_year$strata_start, sep = "")), format = "%b %d %Y")
 
     p1 <- ggplot(u_by_year, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50)) +
       geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, col = "#56B4E9") +
-      geom_line() +
       geom_point() +
       labs(y = "Abundance (U)", x = NULL, title = paste(selectyr,species,trap.name,"Calendar")) +
       theme_minimal() +
@@ -481,12 +491,12 @@ Multi_Year_Calendar <- function(data,
         plot.title = element_text(size = 16)  # Increase the font size for the plot title
       )
 
-    p_by_year$date <- format(as.Date(p_by_year$strata*strata.length, origin = paste(p_by_year$mig_year, "-01-01", sep = "")), format = "%b %d %Y")
+    p_by_year$date <- format(as.Date(paste(p_by_year$mig_year,"-",p_by_year$strata_start, sep = "")), format = "%b %d %Y")
 
     p2 <- ggplot(p_by_year, aes(x = reorder(reorder(date, strata), mig_year), y = quantile_50)) +
       geom_errorbar(aes(ymin = quantile_2.5, ymax = quantile_97.5), width = 0.1, col = "#E69F00") +
-      geom_line() + geom_point() +
-      labs(y = "Capture probability (p)", x = "Strata") +
+      geom_point() +
+      labs(y = "Capture probability (p)", x = "Strata start date") +
       theme_minimal() +
       theme(
         axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Increase the font size for x-axis text

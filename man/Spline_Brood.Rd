@@ -24,7 +24,7 @@ Spline_Brood(
 )
 }
 \arguments{
-\item{data}{capture-mark-recapture data frame}
+\item{data}{capture-mark-recapture data frame.}
 
 \item{effort.cor}{expands the number of unmarked fish captured by a sampling effort}
 
@@ -64,4 +64,6 @@ The p-spline model was developed by Bonner & Schwarz (2011) and the R script to 
 found in the BTSPAS packages.
 The Spline_Brood() function was intended to be used to summarize juvenile Chinook Salmon abundances by brood year.
 e.g. Summaries for brood year 2012 consist of parr (calendar year 2013), presmolts (calendar year 2013), smolts (calendar year 2014).
+At a minimum, input data should have columns "year","strata","m","n","u","days","effort","strata_start","strata_end".
+See example data for formatting.
 }
