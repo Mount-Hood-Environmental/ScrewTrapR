@@ -39,7 +39,7 @@ Format_Chinook <- function(RST_ops_obs_data,
   day.effort <- RST_ops_obs_data %>%
     select(PT2Date,Operation) %>%
     distinct() %>%
-    rename("date" = "PT2Date")
+    dplyr::rename("date" = "PT2Date")
 
   # -----------------------------
 
@@ -161,7 +161,7 @@ Format_Chinook <- function(RST_ops_obs_data,
     mutate(Operation = ifelse(is.na(Operation), 0, Operation),
            yoyn = lag(yoyn), # lag "n" by one day for yoy and taggables
            n = lag(n)) %>%
-    rename("effort" = "Operation")
+    dplyr::rename("effort" = "Operation")
 
   #add a column "days" and fill with "1"s
   trap_full["days"] <- 1

@@ -39,7 +39,7 @@ Format_Steelhead <- function(RST_ops_obs_data,
   day.effort <- RST_ops_obs_data %>%
     select(PT2Date,Operation) %>%
     distinct() %>%
-    rename("date" = "PT2Date")
+    dplyr::rename("date" = "PT2Date")
 
   # -----------------------------
 
@@ -111,7 +111,7 @@ Format_Steelhead <- function(RST_ops_obs_data,
   trap_full = trap_full %>%
     mutate(Operation = ifelse(is.na(Operation), 0, Operation),
            n = lag(n)) %>% # lag "n" by one day for yoy and taggables
-    rename("effort" = "Operation")
+    dplyr::rename("effort" = "Operation")
 
   #add a column "days" and fill with "1"s
   trap_full["days"] <- 1

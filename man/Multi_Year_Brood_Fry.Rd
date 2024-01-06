@@ -17,9 +17,9 @@ Multi_Year_Brood_Fry(
   den.plot = TRUE,
   trace.plot = TRUE,
   strata.length = s.length,
-  burnin = 200000,
+  burnin = 2e+05,
   chains = 3,
-  iterations = 400000,
+  iterations = 4e+05,
   thin = 200,
   boot = 5000,
   model.params = c("p", "U", "etaP1", "etaU1", "sigmaU", "sigmaP")

@@ -16,7 +16,7 @@ Merge_RST_Obs_Ops <- function(fish_observation,
 
   fish <- fish_observation %>%
     mutate(FishDate = as.Date(FishDate, format = "%Y-%m-%d")) %>%
-    rename("StartDate" = "FishDate")
+    dplyr::rename("StartDate" = "FishDate")
 
   trap<-trap_operations %>%
     mutate(StartDate = as.Date(StartDate, format = "%Y-%m-%d"),
@@ -30,7 +30,7 @@ Merge_RST_Obs_Ops <- function(fish_observation,
   fish_obs_max <- max(fish$StartDate)
 
   merged_data <- merged_data %>%
-    rename("PT2Date" = "StartDate",
+    dplyr::rename("PT2Date" = "StartDate",
            "BroodYr" = "BroodYear",
            "Disposition_Acronym" = "Acronym",
            "NFish" = "NumberOfFish",
