@@ -340,14 +340,14 @@ Multi_Year_Brood_Fry <- function(data,
 
   # clean up summary stats
   outputsummary <- outputsummary %>%
-    rename("parameter" = "Parameter",
+    dplyr::rename("parameter" = "Parameter",
            "mig_year"="year") %>%
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
 
   outputsummary = outputsummary %>%
     left_join(strata_key %>%
-                rename(mig_year=year), by = c("mig_year","strata"))
+                dplyr::rename(mig_year=year), by = c("mig_year","strata"))
 
   # find strata that are below the minimum strata operation threshold.
   ag.strata <- aggregate(ceiling(data$cor.factor), by=list(strata=data$strata), FUN=sum)
@@ -469,14 +469,14 @@ Multi_Year_Brood_Fry <- function(data,
 
   # clean up summary stats
   outputsummary.fry <- outputsummary.fry %>%
-    rename("parameter" = "Parameter",
+    dplyr::rename("parameter" = "Parameter",
            "mig_year"="year") %>%
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
 
   outputsummary.fry = outputsummary.fry %>%
     left_join(strata_key %>%
-                rename(mig_year=year), by = c("mig_year","strata"))
+                dplyr::rename(mig_year=year), by = c("mig_year","strata"))
 
   # find strata that are below the minimum strata operation threshold.
   fry.ag.strata <- aggregate(ceiling(fry.data$cor.factor), by=list(strata=fry.data$strata), FUN=sum)
@@ -863,14 +863,14 @@ Multi_Year_Brood_Fry <- function(data,
 
     # clean up summary stats
     boutputsummary <- boutputsummary %>%
-      rename("parameter" = "Parameter",
+      dplyr::rename("parameter" = "Parameter",
              "mig_year" = "year") %>%
       mutate(across(where(is.numeric), ~ round(., 3))) %>%
       arrange(mig_year, parameter)
 
     boutputsummary = boutputsummary %>%
       left_join(strata_key %>%
-                  rename(mig_year=year), by = c("mig_year","strata"))
+                  dplyr::rename(mig_year=year), by = c("mig_year","strata"))
 
     # adding the if condition so the code does not run for 2 years before the minimum year in the data
     if(min(data$year) - selectyr < 2){
@@ -901,7 +901,7 @@ Multi_Year_Brood_Fry <- function(data,
 
       # clean up summary stats
       foutputsummary <- foutputsummary %>%
-        rename("parameter" = "Parameter",
+        dplyr::rename("parameter" = "Parameter",
                "mig_year" = "year") %>%
         mutate(across(where(is.numeric), ~ round(., 3))) %>%
         arrange(mig_year, parameter) %>%
@@ -909,7 +909,7 @@ Multi_Year_Brood_Fry <- function(data,
 
       foutputsummary = foutputsummary %>%
         left_join(strata_key %>%
-                    rename(mig_year=year), by = c("mig_year","strata"))
+                    dplyr::rename(mig_year=year), by = c("mig_year","strata"))
 
     }
 
@@ -1001,7 +1001,7 @@ Multi_Year_Brood_Fry <- function(data,
     broodsummary <- broodsummary %>%
       left_join(data %>%
                   select(-c("strata_start", "strata_end")) %>%
-                  rename("mig_year" ="year"), by = c("mig_year","strata"))
+                  dplyr::rename("mig_year" ="year"), by = c("mig_year","strata"))
 
     #read out files
     sink(paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Brood/",

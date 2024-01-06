@@ -274,14 +274,14 @@ Multi_Year_Brood <- function(data,
 
   # clean up summary stats
   outputsummary <- outputsummary %>%
-    rename("parameter" = "Parameter",
+    dplyr::rename("parameter" = "Parameter",
            "mig_year"="year") %>%
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
 
   outputsummary = outputsummary %>%
     left_join(strata_key %>%
-                rename(mig_year=year), by = c("mig_year","strata"))
+                dplyr::rename(mig_year=year), by = c("mig_year","strata"))
 
   # find strata that are below the minimum strata operation threshold.
   ag.strata <- aggregate(ceiling(data$cor.factor), by=list(strata=data$strata), FUN=sum)
@@ -576,14 +576,14 @@ Multi_Year_Brood <- function(data,
 
     # clean up summary stats
     boutputsummary <- boutputsummary %>%
-      rename("parameter" = "Parameter",
+      dplyr::rename("parameter" = "Parameter",
              "mig_year" = "year") %>%
       mutate(across(where(is.numeric), ~ round(., 3))) %>%
       arrange(mig_year, parameter)
 
     boutputsummary = boutputsummary %>%
       left_join(strata_key %>%
-                  rename(mig_year=year), by = c("mig_year","strata"))
+                  dplyr::rename(mig_year=year), by = c("mig_year","strata"))
 
     # adding the if condition so the code does not run for a year before the maximum year in the data
     if(max(data$year) - selectyr > 1){
@@ -623,7 +623,7 @@ Multi_Year_Brood <- function(data,
     broodsummary <- broodsummary %>%
       left_join(data %>%
                   select(-c("strata_start", "strata_end")) %>%
-                  rename("mig_year" ="year"), by = c("mig_year","strata"))
+                  dplyr::rename("mig_year" ="year"), by = c("mig_year","strata"))
 
     #read out files
     options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink

@@ -310,13 +310,13 @@ Spline_Brood <- function(data,
 
     # clean up summary stats
     outputsummary <- outputsummary %>%
-      rename("parameter" = "Parameter",
+      dplyr::rename("parameter" = "Parameter",
              "mig_year" = "year") %>%
       mutate(across(where(is.numeric), ~ round(., 3)))
 
     outputsummary = outputsummary %>%
       left_join(strata_key %>%
-                  rename(mig_year=year), by = c("mig_year","strata"))
+                  dplyr::rename(mig_year=year), by = c("mig_year","strata"))
 
     ###########################################################
     #                      Life Stage                         #
@@ -531,7 +531,7 @@ Spline_Brood <- function(data,
     broodsummary <- broodsummary %>%
       left_join(brood_data %>%
                   select(-c("strata_start", "strata_end","model_strata")) %>%
-                  rename("mig_year" ="year"), by = c("mig_year","strata"))
+                  dplyr::rename("mig_year" ="year"), by = c("mig_year","strata"))
 
     #read out files
     options(width = 10000)  # Adjust the width to fit data in .txt for printing with sink

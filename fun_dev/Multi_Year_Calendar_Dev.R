@@ -254,14 +254,14 @@ Multi_Year_Calendar <- function(data,
 
   # clean up summary stats
   outputsummary <- outputsummary %>%
-    rename("parameter" = "Parameter",
+    dplyr::rename("parameter" = "Parameter",
            "mig_year"="year") %>%
     mutate(across(where(is.numeric), ~ round(., 3))) %>%
     arrange(mig_year, parameter)
 
   outputsummary = outputsummary %>%
     left_join(strata_key %>%
-                rename(mig_year=year), by = c("mig_year","strata"))
+                dplyr::rename(mig_year=year), by = c("mig_year","strata"))
 
   # find strata that are below the minimum strata operation threshold.
   ag.strata <- aggregate(ceiling(data$cor.factor), by=list(strata=data$strata), FUN=sum)
@@ -447,7 +447,7 @@ Multi_Year_Calendar <- function(data,
   cal.summary <- cal.summary %>%
     left_join(data %>%
                 select(-c("strata_start", "strata_end")) %>%
-                rename("mig_year" ="year"), by = c("mig_year","strata"))
+                dplyr::rename("mig_year" ="year"), by = c("mig_year","strata"))
 
   #read out files
   sink(paste(main_folder,"/Results/",selectyr,"_",species,"_",trap.name,"_Calendar/",
