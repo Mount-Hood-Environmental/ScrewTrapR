@@ -336,11 +336,11 @@ Multi_Year_Calendar <- function(data,
 
     #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
     juvUoutputsummary <- juvUdist %>%
-      summarise(
+      dplyr::summarise(
         mode = as.numeric(names(which.max(table(juvUdist)))),
         mean = mean(juvUdist),
         sd = sd(juvUdist),
-        naiveSE = sd / sqrt(length(value)),
+        naiveSE = sd / sqrt(length(juvUdist)),
         quantile_2.5 = quantile(juvUdist, probs = 0.025),
         quantile_25 = quantile(juvUdist, probs = 0.25),
         quantile_50 = quantile(juvUdist, probs = 0.5),
@@ -373,11 +373,11 @@ Multi_Year_Calendar <- function(data,
 
     #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
     smoltUoutputsummary <- smoltUdist %>%
-      summarise(
+      dplyr::summarise(
         mode = as.numeric(names(which.max(table(smoltUdist)))),
         mean = mean(smoltUdist),
         sd = sd(smoltUdist),
-        naiveSE = sd / sqrt(length(value)),
+        naiveSE = sd / sqrt(length(smoltUdist)),
         quantile_2.5 = quantile(smoltUdist, probs = 0.025),
         quantile_25 = quantile(smoltUdist, probs = 0.25),
         quantile_50 = quantile(smoltUdist, probs = 0.5),
@@ -409,11 +409,11 @@ Multi_Year_Calendar <- function(data,
 
   #Get summary statistics for U bootstrapped distribution
   totUoutputsummary <- totUdist %>%
-    summarise(
+    dplyr::summarise(
       mode = as.numeric(names(which.max(table(totUdist)))),
       mean = mean(totUdist),
       sd = sd(totUdist),
-      naiveSE = sd / sqrt(length(value)),
+      naiveSE = sd / sqrt(length(totUdist)),
       quantile_2.5 = quantile(totUdist, probs = 0.025),
       quantile_25 = quantile(totUdist, probs = 0.25),
       quantile_50 = quantile(totUdist, probs = 0.5),

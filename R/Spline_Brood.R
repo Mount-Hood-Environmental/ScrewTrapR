@@ -287,7 +287,7 @@ Spline_Brood <- function(data,
     #Get summary statistics for U bootstrapped distribution
     outputsummary <- model.fit.gg.renamed %>%
       group_by(Parameter) %>%
-      summarise(
+      dplyr::summarise(
         mode = as.numeric(names(which.max(table(value)))),
         mean = mean(value),
         sd = sd(value),
@@ -360,11 +360,11 @@ Spline_Brood <- function(data,
 
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       parrUoutputsummary <- parrUdist %>%
-        summarise(
+        dplyr::summarise(
           mode = as.numeric(names(which.max(table(parrUdist)))),
           mean = mean(parrUdist),
           sd = sd(parrUdist),
-          naiveSE = sd / sqrt(length(value)),
+          naiveSE = sd / sqrt(length(parrUdist)),
           quantile_2.5 = quantile(parrUdist, probs = 0.025),
           quantile_25 = quantile(parrUdist, probs = 0.25),
           quantile_50 = quantile(parrUdist, probs = 0.5),
@@ -396,11 +396,11 @@ Spline_Brood <- function(data,
 
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       presmoltUoutputsummary <- presmoltUdist %>%
-        summarise(
+        dplyr::summarise(
           mode = as.numeric(names(which.max(table(presmoltUdist)))),
           mean = mean(presmoltUdist),
           sd = sd(presmoltUdist),
-          naiveSE = sd / sqrt(length(value)),
+          naiveSE = sd / sqrt(length(presmoltUdist)),
           quantile_2.5 = quantile(presmoltUdist, probs = 0.025),
           quantile_25 = quantile(presmoltUdist, probs = 0.25),
           quantile_50 = quantile(presmoltUdist, probs = 0.5),
@@ -435,11 +435,11 @@ Spline_Brood <- function(data,
 
       #Get descriptive statistics mode, mean, sd, niaveSE or U bootstrap distribution
       smoltUoutputsummary <- smoltUdist %>%
-        summarise(
+        dplyr::summarise(
           mode = as.numeric(names(which.max(table(smoltUdist)))),
           mean = mean(smoltUdist),
           sd = sd(smoltUdist),
-          naiveSE = sd / sqrt(length(value)),
+          naiveSE = sd / sqrt(length(smoltUdist)),
           quantile_2.5 = quantile(smoltUdist, probs = 0.025),
           quantile_25 = quantile(smoltUdist, probs = 0.25),
           quantile_50 = quantile(smoltUdist, probs = 0.5),
@@ -498,11 +498,11 @@ Spline_Brood <- function(data,
     totUdist$totUdist<-as.numeric(totUdist$totUdist) #change output to numeric
 
     totUoutputsummary <- totUdist %>%
-      summarise(
+      dplyr::summarise(
         mode = as.numeric(names(which.max(table(totUdist)))),
         mean = mean(totUdist),
         sd = sd(totUdist),
-        naiveSE = sd / sqrt(length(value)),
+        naiveSE = sd / sqrt(length(totUdist)),
         quantile_2.5 = quantile(totUdist, probs = 0.025),
         quantile_25 = quantile(totUdist, probs = 0.25),
         quantile_50 = quantile(totUdist, probs = 0.5),
