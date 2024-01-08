@@ -13,7 +13,7 @@ library(here)
 
 getwd()
 
-data <- read.csv(here("data/example_export/Example_data.csv"))
+data <- read.csv(here("data/example_export/Example_data_new.csv"))
 
 source("shiny_app/Multi_Year_Brood.R")
 
