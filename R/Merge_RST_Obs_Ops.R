@@ -28,7 +28,7 @@ Merge_RST_Obs_Ops <- function(fish_observation,
   merged_data <- full_join(fish, trap %>%
                              select("StartDate","Operation"), by = "StartDate")
 
-  fish_obs_max <- max(fish$StartDate)
+  fish_obs_max <- max(fish$StartDate, na.rm=T)
 
   merged_data <- merged_data %>%
     dplyr::rename("PT2Date" = "StartDate",
