@@ -25,7 +25,8 @@ Merge_RST_Obs_Ops <- function(fish_observation,
     filter(Operation %in% c(1.0, 0.5, 0.0)) %>%
     slice(which.max(Operation %in% c(1.0, 0.5, 0.0)))
 
-  merged_data <- full_join(fish, trap[,-c(1:2)], by = "StartDate")
+  merged_data <- full_join(fish, trap %>%
+                             select("StartDate","Operation"), by = "StartDate")
 
   fish_obs_max <- max(fish$StartDate)
 
