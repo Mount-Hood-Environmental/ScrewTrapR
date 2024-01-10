@@ -39,7 +39,9 @@ Format_Steelhead <- function(RST_ops_obs_data,
   day.effort <- RST_ops_obs_data %>%
     select(PT2Date,Operation) %>%
     distinct() %>%
-    dplyr::rename("date" = "PT2Date")
+    dplyr::rename("date" = "PT2Date")%>%
+    filter(!(month(date) == 2 & day(date) == 29 & leap_year(year(date))))
+
 
   # -----------------------------
 
@@ -121,7 +123,7 @@ Format_Steelhead <- function(RST_ops_obs_data,
   #########################################
 
   trap_smolt = trap_full %>%
-    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    mutate(monthDay = format(trap_full$date, "%m-%d")) %>%
     filter(monthDay < smolt.date)
 
   # Make it so strata are grouped by days starting from the identified smolt date and working backwards to the beginning
@@ -131,7 +133,7 @@ Format_Steelhead <- function(RST_ops_obs_data,
                         labels=seq(ceiling(max(trap_smolt$julian, na.rm = TRUE)/strata),1), right = TRUE)
 
   trap_juv = trap_full %>%
-    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    mutate(monthDay = format(trap_full$date, "%m-%d")) %>%
     filter(monthDay >= smolt.date)
 
   juv_seq <- c(seq(min(trap_juv$julian, na.rm = TRUE), max(trap_juv$julian, na.rm = TRUE), by=strata), max(trap_juv$julian, na.rm = TRUE)+1)

@@ -39,7 +39,8 @@ Format_Chinook <- function(RST_ops_obs_data,
   day.effort <- RST_ops_obs_data %>%
     select(PT2Date,Operation) %>%
     distinct() %>%
-    dplyr::rename("date" = "PT2Date")
+    dplyr::rename("date" = "PT2Date") %>%
+    filter(!(month(date) == 2 & day(date) == 29 & leap_year(year(date))))
 
   # -----------------------------
 
@@ -171,7 +172,7 @@ Format_Chinook <- function(RST_ops_obs_data,
   #########################################
 
   trap_smolt = trap_full %>%
-    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    mutate(monthDay = format(trap_full$date, "%m-%d")) %>%
     filter(monthDay < smolt.date)
 
   # Make it so strata are grouped by days starting from the identified smolt date and working backwards to the beginning
@@ -181,14 +182,14 @@ Format_Chinook <- function(RST_ops_obs_data,
                         labels=seq(ceiling(max(trap_smolt$julian, na.rm = TRUE)/strata),1), right = TRUE)
 
   trap_parr = trap_full %>%
-    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    mutate(monthDay = format(trap_full$date, "%m-%d")) %>%
     filter(monthDay >= smolt.date & monthDay< parr.presmolt.date)
 
   parr_seq <-c(seq(min(trap_parr$julian, na.rm = TRUE), max(trap_parr$julian, na.rm = TRUE), by=strata), max(trap_parr$julian, na.rm = TRUE)+1)
 
   trap_parr$strata=cut(trap_parr$julian,
                        breaks = parr_seq,
-                       labels=seq(max(as.numeric(trap_smolt$strata, na.rm = TRUE))+1, max(as.numeric(trap_smolt$strata, na.rm = TRUE))+length(parr_seq)-1),
+                       labels=seq(max(as.numeric(trap_smolt$strata), na.rm = TRUE)+1, max(as.numeric(trap_smolt$strata), na.rm = TRUE)+length(parr_seq)-1),
                        right = FALSE)
 
   # IDFG biologist set hard dates for smolt/parr and parr/presmolt life-stage designations (typically 07-01 & 09-01). These hard date designations
@@ -221,14 +222,14 @@ Format_Chinook <- function(RST_ops_obs_data,
     select(-row_count)
 
   trap_presmolt = trap_full %>%
-    mutate(monthDay = format(trap_date_filled$date, "%m-%d")) %>%
+    mutate(monthDay = format(trap_full$date, "%m-%d")) %>%
     filter(monthDay>= parr.presmolt.date)
 
   presmolt_seq <- c(seq(min(trap_presmolt$julian, na.rm = TRUE), max(trap_presmolt$julian, na.rm = TRUE), by=strata), max(trap_presmolt$julian, na.rm = TRUE)+1)
 
   trap_presmolt$strata=cut(trap_presmolt$julian,
                            breaks = presmolt_seq,
-                           labels=seq(max(as.numeric(trap_parr$strata, na.rm = TRUE))+1, max(as.numeric(trap_parr$strata, na.rm = TRUE))+length(presmolt_seq)-1),
+                           labels=seq(max(as.numeric(trap_parr$strata), na.rm = TRUE)+1, max(as.numeric(trap_parr$strata), na.rm = TRUE)+length(presmolt_seq)-1),
                            right = FALSE)
 
   trap_smolt = trap_smolt %>%
